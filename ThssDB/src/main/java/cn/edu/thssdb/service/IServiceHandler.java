@@ -1,6 +1,7 @@
 package cn.edu.thssdb.service;
 
 import cn.edu.thssdb.parser.SQLParser;
+import cn.edu.thssdb.parser.statement_data;
 import cn.edu.thssdb.rpc.thrift.ConnectReq;
 import cn.edu.thssdb.rpc.thrift.ConnectResp;
 import cn.edu.thssdb.rpc.thrift.DisconnetResp;
@@ -18,6 +19,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import cn.edu.thssdb.parser.SQLLexer;
 import java.util.Date;
+import cn.edu.thssdb.parser.mySQLvisitor;
 
 public class IServiceHandler implements IService.Iface {
 
@@ -50,7 +52,8 @@ public class IServiceHandler implements IService.Iface {
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         SQLParser parser = new SQLParser(tokens);
         ParseTree tree = parser.sql_stmt_list(); // parse
-
+        mySQLvisitor visitor =new mySQLvisitor();
+        statement_data t = visitor.visit(tree);
         return null;
     }
 }

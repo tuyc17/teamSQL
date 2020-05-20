@@ -55,7 +55,7 @@ public class ThssDB {
             //此处用于测试
             IServiceHandler t = new IServiceHandler();
             ExecuteStatementReq test = new ExecuteStatementReq();
-            test.statement = "123";
+            test.statement = "CREATE TABLE tableName(attrName1 int, attrName2 int, attrNameN int NOT NULL, PRIMARY KEY(attrName1))";
             t.executeStatement(test);
             //测试结束
             server.serve();
