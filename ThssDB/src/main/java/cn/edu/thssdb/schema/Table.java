@@ -1,8 +1,10 @@
 package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.index.BPlusTree;
+import javafx.scene.control.Tab;
 import javafx.util.Pair;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -14,13 +16,16 @@ public class Table implements Iterable<Row> {
   public String tableName;
   public ArrayList<Column> columns;     // 一张表的所有属性的元信息
   public BPlusTree<Entry, Row> index;   // b+树，索引用
-  // 保存的数据
-  private ArrayList<Object[]> data;
 
   private int primaryIndex;
 
+  // 保存的数据
+  private ArrayList<Object[]> data;
+  // 具体数据（DBW）
+  public ArrayList<Row> rows;
+
   // 构造函数
-    // 创建空表
+  // 创建空表
   public Table(String databaseName, String tableName) throws Exception {
     this(databaseName, tableName, new Column[0], new Object[0][]);
   }
@@ -30,6 +35,7 @@ public class Table implements Iterable<Row> {
     this(databaseName, tableName, column, new Object[0][]);
   }
 
+  // 基本构造函数
   public Table(String databaseName, String tableName, Column[] columns, Object[][] data) throws Exception {
     // TODO
     this.databaseName = databaseName;
@@ -64,21 +70,28 @@ public class Table implements Iterable<Row> {
       data.remove(rowDelete);
     }
     catch(Exception e) {
-      
+
     }
   }
 
   public void update() {
     // TODO
   }
-
-  private void serialize() {
+  //根据网上的教程序列化和反序列化需要implement Serializable接口最后测试的时候可能table类要加上
+  private void serialize() throws IOException {
     // TODO
+    ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(new File("test.txt")));
+    out.writeObject(this);
+    out.close();
   }
-
-  private ArrayList<Row> deserialize() {
+  // 这里框架为什么返回值是ArrayList<Row>即具体数据而不是table类没有想得很清楚
+  private ArrayList<Row> deserialize() throws IOException, ClassNotFoundException {
     // TODO
-    return null;
+    // return null;
+    ObjectInputStream in = new ObjectInputStream(new FileInputStream(new File("test.txt")));
+    Table table = (Table)in.readObject();
+    in.close();
+    return table.rows;
   }
 
   private class TableIterator implements Iterator<Row> {
