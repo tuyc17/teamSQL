@@ -16,7 +16,9 @@ public class SQLBaseListener implements SQLListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterParse(SQLParser.ParseContext ctx) { }
+	@Override public void enterParse(SQLParser.ParseContext ctx) {
+
+	}
 	/**
 	 * {@inheritDoc}
 	 *
