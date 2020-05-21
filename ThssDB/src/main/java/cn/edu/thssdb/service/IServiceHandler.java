@@ -54,6 +54,7 @@ public class IServiceHandler implements IService.Iface {
         ParseTree tree = parser.sql_stmt_list(); // parse
         mySQLvisitor visitor =new mySQLvisitor();
         statement_data t = visitor.visit(tree);
+        //在此处语法解析完成，并生成 statement_data t，请对t进行访问，以修改数据库
         return null;
     }
 }

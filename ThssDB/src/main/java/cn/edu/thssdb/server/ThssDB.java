@@ -37,11 +37,11 @@ public class ThssDB {
         handler = new IServiceHandler();
         processor = new IService.Processor(handler);
         Runnable setup = () -> {
-          try {
-            setUp(processor);
-          } catch (TException e) {
-            e.printStackTrace();
-          }
+            try {
+                setUp(processor);
+            } catch (TException e) {
+                e.printStackTrace();
+            }
         };
         new Thread(setup).start();
     }
@@ -53,10 +53,21 @@ public class ThssDB {
             logger.info("Starting ThssDB ...");
 
             //此处用于测试
-            IServiceHandler t = new IServiceHandler();
-            ExecuteStatementReq test = new ExecuteStatementReq();
-            test.statement = "CREATE TABLE tableName(attrName1 int, attrName2 int, attrNameN int NOT NULL, PRIMARY KEY(attrName1))";
-            t.executeStatement(test);
+//            IServiceHandler t = new IServiceHandler();
+//            ExecuteStatementReq test = new ExecuteStatementReq();
+//          test.statement = "CREATE TABLE person (name String(256), ID Int not null, PRIMARY KEY(ID))";
+//          //CREATE测试完成
+//          test.statement ="INSERT INTO person VALUES ('Bob', 15)";
+//          //insert测试完成
+//          test.statement ="DELETE FROM tableName WHERE attrName = attValue";
+//          delete测试完成
+//          test.statement ="UPDATE  tableName  SET  attrName = attrValue  WHERE  attrName = attrValue";
+//          test.statement ="UPDATE  tableName  SET  attrName = attrValue  ";
+//          //update测试完成
+//          test.statement ="SELECT tableName1.AttrName1, tableName1.AttrName2, tableName2.AttrName1, tableName2.AttrName2  " +
+//                    "FROM  tableName1 JOIN tableName2  ON  tableName1.attrName1 = tableName2.attrName2  " +
+//                    "WHERE  attrName1 = attrValue ";
+//            t.executeStatement(test);
             //测试结束
             server.serve();
         } catch (TTransportException e) {
@@ -68,6 +79,7 @@ public class ThssDB {
         private static final ThssDB INSTANCE = new ThssDB();
 
         private ThssDBHolder() {
+            ;
 
         }
     }
