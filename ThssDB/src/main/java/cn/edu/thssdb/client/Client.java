@@ -40,7 +40,7 @@ public class Client {
     private static TProtocol protocol;
     private static IService.Client client;
     private static CommandLine commandLine;
-    public static long session;
+    public static long session = -1;
 
     public static void main(String[] args) {
         commandLine = parseCmd(args);
@@ -70,12 +70,18 @@ public class Client {
                         getTime();
                         break;
                     case Global.QUIT:
+                        //理论上这里是disconnect，但是有些bug，不是很理解，故不管
                         open = false;
                         break;
                     default:
                       // 应该是服务端告诉客户端这个语句不通顺，客户端没有语法解析，应该是不知道的
                       // 故default应该是语法执行，客户端等回信，而不是输出invalid statements
-                        println("Invalid statements!");
+                        if (session==-1){
+                            println("尚未连接！");
+                        }
+                        else{
+                            send_statment(session,msg.trim());
+                        }
                         break;
                 }
                 long endTime = System.currentTimeMillis();
@@ -103,13 +109,24 @@ public class Client {
     try {
         ConnectResp resp = client.connect(req);
         Status temp = resp.getStatus();
-        //异常处理省略
+        //异常处理省略,理论上应该通过这个观察是否异常
         session=resp.getSessionId();
         System.out.println(session);
     } catch (TException e) {
       logger.error(e.getMessage());
     }
   }
+    private static void send_statment(long sessionId,String statment) {
+        ExecuteStatementReq req = new ExecuteStatementReq(sessionId,statment);
+        try {
+            ExecuteStatementResp resp = client.executeStatement(req);
+            Status temp = resp.getStatus();
+            //异常处理省略,理论上应该通过这个观察是否异常
+            System.out.println("已收到语句回复");
+        } catch (TException e) {
+            logger.error(e.getMessage());
+        }
+    }
 
     static Options createOptions() {
         Options options = new Options();

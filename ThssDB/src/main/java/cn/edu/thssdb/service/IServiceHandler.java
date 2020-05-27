@@ -60,8 +60,8 @@ public class IServiceHandler implements IService.Iface {
 
     @Override
     public ExecuteStatementResp executeStatement(ExecuteStatementReq req) throws TException {
-        // TODO
 
+        long session =req.sessionId;
         CharStream input = CharStreams.fromString(req.statement);
         SQLLexer lexer = new SQLLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -69,7 +69,15 @@ public class IServiceHandler implements IService.Iface {
         ParseTree tree = parser.sql_stmt_list(); // parse
         mySQLvisitor visitor =new mySQLvisitor();
         statement_data t = visitor.visit(tree);
+        System.out.print("收到信息，类型为:");
+        System.out.print(t.kind);
         //在此处语法解析完成，并生成 statement_data t，请对t进行访问，以修改数据库
-        return null;
+        // TODO 处理数据库
+
+
+        // TODO 根据数据库处理结果返回给客户端
+        ExecuteStatementResp resp = new ExecuteStatementResp();
+        resp.setStatus(new Status(Global.SUCCESS_CODE));
+        return resp;
     }
 }
