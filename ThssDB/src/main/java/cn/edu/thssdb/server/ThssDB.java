@@ -13,6 +13,10 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 public class ThssDB {
 
     private static final Logger logger = LoggerFactory.getLogger(ThssDB.class);
@@ -21,13 +25,36 @@ public class ThssDB {
     private static IService.Processor processor;
     private static TServerSocket transport;
     private static TServer server;
-
+    public List<Long> sessions = new ArrayList<>();
     private Manager manager;
 
     public static ThssDB getInstance() {
         return ThssDBHolder.INSTANCE;
     }
-
+    public long new_session(){
+        Random r = new Random();
+        long temp;
+        while(true){
+            temp = r.nextLong();
+            for (int i = 0;i<sessions.size();i++){
+                if (temp==sessions.get(i)){
+                    continue;
+                }
+            }
+            break;
+        }
+        sessions.add(temp);
+        return temp;
+    }
+    public boolean remove_session(long session){
+        for (int i = 0;i<sessions.size();i++){
+            if (session==sessions.get(i)){
+                sessions.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
     public static void main(String[] args) {
         ThssDB server = ThssDB.getInstance();
         server.start();
@@ -35,6 +62,7 @@ public class ThssDB {
 
     private void start() {
         handler = new IServiceHandler();
+        handler.server=this;
         processor = new IService.Processor(handler);
         Runnable setup = () -> {
             try {

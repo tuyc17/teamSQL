@@ -20,8 +20,10 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import cn.edu.thssdb.parser.SQLLexer;
 import java.util.Date;
 import cn.edu.thssdb.parser.mySQLvisitor;
+import cn.edu.thssdb.server.ThssDB;
 
 public class IServiceHandler implements IService.Iface {
+    public ThssDB server;
 
     @Override
     public GetTimeResp getTime(GetTimeReq req) throws TException {
@@ -33,14 +35,27 @@ public class IServiceHandler implements IService.Iface {
 
     @Override
     public ConnectResp connect(ConnectReq req) throws TException {
+
         // TODO
-        return null;
+        long sessionId=server.new_session();
+        System.out.println("Test:");
+        System.out.println(req.username);
+        System.out.println(req.password);
+
+        ConnectResp resp = new ConnectResp();
+        resp.setStatus(new Status(Global.SUCCESS_CODE));
+        resp.setSessionId(sessionId);
+        System.out.println(resp.sessionId);
+        return resp;
     }
 
     @Override
     public DisconnetResp disconnect(DisconnetResp req) throws TException {
         // TODO
-        return null;
+        // 疑惑？
+        DisconnetResp resp = new DisconnetResp();
+        resp.setStatus(new Status(Global.SUCCESS_CODE));
+        return resp;
     }
 
     @Override
