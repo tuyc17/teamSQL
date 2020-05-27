@@ -1,6 +1,8 @@
 package cn.edu.thssdb.parser;
 
 
+import cn.edu.thssdb.exception.KeyNotExistException;
+
 public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
     statement_data result = new statement_data();
 
@@ -10,13 +12,18 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
         for (int i = 0; i < num1; i++) {
             result.table_names.add(ctx.table_name(i).getText());
         }
-        EqualExpression temp = new EqualExpression();
+        if (ctx.multiple_condition()==null){
+            return result;
+        }
         String str1 = ctx.multiple_condition().condition().expression(0).getText();
         String str2 = ctx.multiple_condition().condition().expression(1).getText();
+        EqualExpression temp = new EqualExpression();
+
         String[] k = str1.split("\\.");
         FullColumn temp2 = new FullColumn();
         if (k.length == 0) {
             //这种情况是*不考虑
+
         } else if (k.length == 1) {
 
             temp2.tableName = "NULL";
@@ -177,7 +184,7 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
     public statement_data visitSelect_stmt(SQLParser.Select_stmtContext ctx) {
         int num1 = ctx.result_column().size();
         int num2 = ctx.table_query().size();
-
+        result.kind="select";
         for (int i = 0; i < num1; i++) {
             String temp = ctx.result_column(i).getText();
             String[] k = temp.split("\\.");
@@ -198,7 +205,9 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
         for (int i = 0; i < num2; i++) {
             visit(ctx.table_query(i));
         }
-        visit(ctx.multiple_condition());
+        if (ctx.multiple_condition()!=null){
+            visit(ctx.multiple_condition());
+        }
         return result;
     }
 }

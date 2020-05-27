@@ -64,7 +64,13 @@ public class Client {
                 long startTime = System.currentTimeMillis();
                 switch (msglist[0]) {
                     case Global.CONNECT:
-                        sendconnect(msglist[1],msglist[2]);
+                        // 目前暂时没有密码校验
+                        if (msglist.length<3){
+                            sendconnect("msglist[1]","msglist[2]");
+                        }
+                        else{
+                            sendconnect(msglist[1],msglist[2]);
+                        }
                         break;
                     case Global.SHOW_TIME:
                         getTime();
