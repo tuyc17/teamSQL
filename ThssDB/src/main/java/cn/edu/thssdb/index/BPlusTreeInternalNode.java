@@ -5,6 +5,7 @@ import cn.edu.thssdb.utils.Global;
 import java.util.ArrayList;
 import java.util.Collections;
 
+// b+树非叶节点（内部节点）
 public final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeNode<K, V> {
 
   ArrayList<BPlusTreeNode<K, V>> children;
