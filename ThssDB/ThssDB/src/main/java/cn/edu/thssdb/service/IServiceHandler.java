@@ -88,26 +88,24 @@ public class IServiceHandler implements IService.Iface {
         switch (t.kind){
             case "use_database":
                 //切换数据库
+                //已测试
                 server.manager.switchDatabase(t.database_name);
                 resp.getStatus().msg="切换数据库成功";
                 //异常状况:
                 break;
             case "create_database":
+                //已测试
                 server.manager.createDatabaseIfNotExists(t.database_name);
                 resp.getStatus().msg="创建数据库成功";
                 break;
             case "drop_database":
+                //已测试
                 server.manager.deleteDatabase(t.database_name);
                 resp.getStatus().msg="删除数据库成功";
                 break;
             case "create_table":
+                //已测试
                 db.create(t.table.table_name,t.getColumns());
-                //将表信息输出给client
-                tempTable= db.getTables().get(t.table.table_name);
-                //输出列
-                resp.columnsList = tempTable.GetColumnName();
-                //输出行
-                resp.rowList = Database.BTreeParseLLS(tempTable.index);
                 resp.getStatus().msg="创建数据表成功";
                 break;
             case "insert":

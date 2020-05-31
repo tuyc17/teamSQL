@@ -56,22 +56,20 @@ public class Manager {
     }
     else
     {
-      Database db = new Database(name);
-      databases.put(name, db);
-
       try
       {
         File file = new File(Global.root+"/data/databases/"+name+".txt");
         file.createNewFile();
-
-        FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt",true);
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write(name + '\n');
-        fileWriter.close();
+        bufferedWriter.flush();
         bufferedWriter.close();
       } catch (IOException e) {
         e.printStackTrace();
       }
+      Database db = new Database(name);
+      databases.put(name, db);
     }
   }
 
@@ -82,13 +80,13 @@ public class Manager {
       databases.remove(name);
       try
       {
+        //TODO
         //应该要保证数据库中没有表了才能删除
         File file = new File(Global.root+"/data/databases/"+name+".txt");
         file.delete();
 
         FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        bufferedWriter.write("");
         Set<String> keys = databases.keySet();
         Iterator<String> iterator = keys.iterator();
         while (iterator.hasNext())
@@ -96,8 +94,9 @@ public class Manager {
           String key = iterator.next();
           bufferedWriter.write(key + "\n");
         }
-        fileWriter.close();
+        bufferedWriter.flush();
         bufferedWriter.close();
+
       } catch (IOException e) {
         e.printStackTrace();
       }

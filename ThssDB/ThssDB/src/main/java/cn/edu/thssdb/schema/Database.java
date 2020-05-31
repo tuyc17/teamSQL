@@ -173,6 +173,7 @@ public class Database {
         fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
         bufferedWriter = new BufferedWriter(fileWriter);
         for (Column c: columns) {
+          System.out.println(c.toString());
           bufferedWriter.write(c.toString()+"\n");
         }
         //先关buffer
@@ -284,7 +285,7 @@ public class Database {
         }
         bufferedReader1.close();
         fileReader1.close();
-        Table table = new Table(name, line, (Column[])columnArrayList.toArray());
+        Table table = new Table(name, line, (Column[])columnArrayList.toArray(new Column[0]));
         tables.put(line, table);
       }
       fileReader.close();
@@ -297,6 +298,6 @@ public class Database {
   public void quit() {
     // TODO
     //数据持久化
-    persist();
+    //persist();
   }
 }

@@ -20,7 +20,7 @@ public class Table implements Iterable<Row> {
   private String databaseName;
   public String tableName;
   public ArrayList<Column> columns;     // 一张表的所有属性的元信息
-  public BPlusTree<Entry, Row> index;   // b+树，索引用
+  public BPlusTree<Entry, Row> index = new BPlusTree<>();   // b+树，索引用
   private int primaryIndex;  //columns中主键的下标
 
   // 基本构造函数

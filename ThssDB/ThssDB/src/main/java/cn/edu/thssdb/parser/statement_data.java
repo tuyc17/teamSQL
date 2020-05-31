@@ -27,7 +27,7 @@ public class statement_data {
 
     public Column[] getColumns() {
         // 其实是从Table里取
-        Column[] temp_list = new Column[Global.MAX_LEN];
+        Column[] temp_list = new Column[table.columns.size()];
         for (int i=0 ;i<table.columns.size();i++){
 
             cn.edu.thssdb.parser.Column old_column =table.columns.get(i);
@@ -46,6 +46,7 @@ public class statement_data {
             Column temp = new Column(old_column.column_name,ColumnType.valueOf(str.toUpperCase()),tempint,old_column.is_NotNull,maxLength);
             temp_list[i] = temp;
         }
+        System.out.println(temp_list.length);
         return temp_list;
     }
 }

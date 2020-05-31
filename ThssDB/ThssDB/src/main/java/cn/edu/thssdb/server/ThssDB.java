@@ -28,7 +28,7 @@ public class ThssDB {
     private static TServerSocket transport;
     private static TServer server;
     public List<Long> sessions = new ArrayList<>();
-    private static Manager manager;
+    public static Manager manager;
 
     public static ThssDB getInstance() {
         return ThssDBHolder.INSTANCE;
@@ -88,7 +88,6 @@ public class ThssDB {
             ArrayList<Column> t = new ArrayList<>();
             t.add(a);
             Column[] columns = (Column[]) t.toArray(new Column[0]);
-            manager.workingDb.create("mytable", columns);
 
             //此处用于测试
 //            IServiceHandler t = new IServiceHandler();
