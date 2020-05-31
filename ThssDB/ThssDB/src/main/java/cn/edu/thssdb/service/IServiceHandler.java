@@ -4,7 +4,8 @@ import cn.edu.thssdb.parser.SQLParser;
 import cn.edu.thssdb.parser.statement_data;
 import cn.edu.thssdb.rpc.thrift.ConnectReq;
 import cn.edu.thssdb.rpc.thrift.ConnectResp;
-import cn.edu.thssdb.rpc.thrift.DisconnetResp;
+import cn.edu.thssdb.rpc.thrift.DisconnectResp;
+import cn.edu.thssdb.rpc.thrift.DisconnectReq;
 import cn.edu.thssdb.rpc.thrift.ExecuteStatementReq;
 import cn.edu.thssdb.rpc.thrift.ExecuteStatementResp;
 import cn.edu.thssdb.rpc.thrift.GetTimeReq;
@@ -57,10 +58,10 @@ public class IServiceHandler implements IService.Iface {
     }
 
     @Override
-    public DisconnetResp disconnect(DisconnetResp req) throws TException {
+    public DisconnectResp disconnect(DisconnectReq req) throws TException {
         // TODO
         // 疑惑？
-        DisconnetResp resp = new DisconnetResp();
+        DisconnectResp resp = new DisconnectResp();
         resp.setStatus(new Status(Global.SUCCESS_CODE));
         return resp;
     }
