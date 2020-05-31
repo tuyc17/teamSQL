@@ -174,7 +174,6 @@ public class Client {
                 tempFrame.add(new JScrollPane(temptable));
                 tempFrame.setSize(400, 300);
                 tempFrame.setLocationRelativeTo(null);
-                tempFrame.setDefaultCloseOperation(tempFrame.EXIT_ON_CLOSE);
                 tempFrame.setVisible(true);
             }
 //            if (resp.rowList != null) {
