@@ -40,7 +40,7 @@ public class Table implements Iterable<Row> {
         break;
       }
     }
-    //recover();
+//    recover();
   }
 
   public List<String> GetColumnName(){
@@ -641,8 +641,8 @@ public class Table implements Iterable<Row> {
   public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
     String expression_op =expression.comparator;
-    String expression_r =expression.left;
-    String expression_l =expression.right;
+    String expression_l =expression.left;
+    String expression_r =expression.right;
 
     int updateIndex = 0;
     for (int i = 0; i < columns.size(); i++)
@@ -1082,7 +1082,7 @@ public class Table implements Iterable<Row> {
                   ArrayList<Entry> entries = pair.getValue().getEntries();
                   if(entries.get(i).compareTo(r) == 0 )
                   {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
+                    Entry[] new_entries = (Entry[]) entries.toArray(new Entry[0]);
                     new_entries[updateIndex] = new_entry;
                     Row new_row = new Row(new_entries);
                     index.update(pair.getKey(), new_row);
@@ -1277,42 +1277,42 @@ public class Table implements Iterable<Row> {
   //否则就是每执行一次上面的函数就要调用一次更新文件
   private void serialize() {
     // TODO
-    try
-    {
-      FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/rows/"+ tableName +".txt");
-      BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-
-      BPlusTreeIterator<Entry, Row> iterator = index.iterator();
-      while (iterator.hasNext())
-      {
-        Pair<Entry, Row> pair = iterator.next();
-        ArrayList<Entry> entries = pair.getValue().getEntries();
-        for(Entry e : entries)
-        {
-          bufferedWriter.write(e.toString()+",");
-        }
-        bufferedWriter.write("\n");
-      }
-
-      bufferedWriter.flush();
-      bufferedWriter.close();
-
-    }
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-
-
 //    try
 //    {
-//      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(new File(Global.root+"/data/tables/rows/"+tableName+".txt")));
-//      out.writeObject(this.index);
-//      out.close();
+//      FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/rows/"+ tableName +".txt");
+//      BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+//
+//      BPlusTreeIterator<Entry, Row> iterator = index.iterator();
+//      while (iterator.hasNext())
+//      {
+//        Pair<Entry, Row> pair = iterator.next();
+//        ArrayList<Entry> entries = pair.getValue().getEntries();
+//        for(Entry e : entries)
+//        {
+//          bufferedWriter.write(e.toString()+",");
+//        }
+//        bufferedWriter.write("\n");
+//      }
+//
+//      bufferedWriter.flush();
+//      bufferedWriter.close();
+//
 //    }
-//    catch (IOException e)
-//    {
+//    catch (IOException e) {
 //      e.printStackTrace();
 //    }
+
+
+    try
+    {
+      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(new File(Global.root+"/data/tables/rows/"+tableName+".txt")));
+      out.writeObject(this.index);
+      out.close();
+    }
+    catch (IOException e)
+    {
+      e.printStackTrace();
+    }
   }
   //假设能反序列化成B+树
   //不行就还是返回row的list然后重建B+树

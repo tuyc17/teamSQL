@@ -4,7 +4,8 @@ import cn.edu.thssdb.parser.SQLParser;
 import cn.edu.thssdb.parser.statement_data;
 import cn.edu.thssdb.rpc.thrift.ConnectReq;
 import cn.edu.thssdb.rpc.thrift.ConnectResp;
-import cn.edu.thssdb.rpc.thrift.DisconnetResp;
+import cn.edu.thssdb.rpc.thrift.DisconnectResp;
+import cn.edu.thssdb.rpc.thrift.DisconnectReq;
 import cn.edu.thssdb.rpc.thrift.ExecuteStatementReq;
 import cn.edu.thssdb.rpc.thrift.ExecuteStatementResp;
 import cn.edu.thssdb.rpc.thrift.GetTimeReq;
@@ -57,11 +58,12 @@ public class IServiceHandler implements IService.Iface {
     }
 
     @Override
-    public DisconnetResp disconnect(DisconnetResp req) throws TException {
+    public DisconnectResp disconnect(DisconnectReq req) throws TException {
         // TODO
-        // 疑惑？
-        DisconnetResp resp = new DisconnetResp();
+        DisconnectResp resp = new DisconnectResp();
+        server.remove_session(req.sessionId);
         resp.setStatus(new Status(Global.SUCCESS_CODE));
+        resp.status.msg="成功断开连接，欢迎再次使用";
         return resp;
     }
 
@@ -77,13 +79,20 @@ public class IServiceHandler implements IService.Iface {
         ParseTree tree = parser.sql_stmt_list(); // parse
         mySQLvisitor visitor =new mySQLvisitor();
         statement_data t = visitor.visit(tree);
+        ExecuteStatementResp resp = new ExecuteStatementResp();
+        resp.setStatus(new Status(Global.SUCCESS_CODE));
+        if (t==null){
+            //语法错误
+            resp.status.code=Global.FAILURE_CODE;
+            resp.status.msg ="语法错误！";
+            return resp;
+        }
         System.out.print("收到信息，类型为:");
         System.out.print(t.kind);
         //在此处语法解析完成，并生成 statement_data t，请对t进行访问，以修改数据库
         // TODO 处理数据库
         // 忽略异常处理
-        ExecuteStatementResp resp = new ExecuteStatementResp();
-        resp.setStatus(new Status(Global.SUCCESS_CODE));
+
         Database db = server.manager.getWorkingDb();
         switch (t.kind){
             case "use_database":
@@ -112,14 +121,24 @@ public class IServiceHandler implements IService.Iface {
                 //已测试
                 //错误情况尚未处理(多主键相同)
                 table = db.getTables().get(t.table_name);
-                Entry[] temp_list = new Entry[Global.MAX_LEN];
+                Entry[] temp_list = new Entry[table.columns.size()];
                 //找每个名字对应的属性
-                for (int i=0;i<t.column_names.size();i++){
-                    //其中可以搞点异常处理
+                if (t.column_names.size()==0){
+                    // TODO：可空问题
                     for (int j=0;j<table.columns.size();j++){
-                        if (t.column_names.get(i).equals(table.columns.get(j).getName())){
-                            //第j个属性值应为第i个属性
-                            temp_list[j] = Database.GetEntry(table.columns.get(j).getType(),t.value_entrys.get(i));
+                        if (t.value_entrys.get(j)!=null){
+                            temp_list[j] = Database.GetEntry(table.columns.get(j).getType(),t.value_entrys.get(j));
+                        }
+                    }
+                }
+                else{
+                    for (int i=0;i<t.column_names.size();i++){
+                        //其中可以搞点异常处理
+                        for (int j=0;j<table.columns.size();j++){
+                            if (t.column_names.get(i).equals(table.columns.get(j).getName())){
+                                //第j个属性值应为第i个属性
+                                temp_list[j] = Database.GetEntry(table.columns.get(j).getType(),t.value_entrys.get(i));
+                            }
                         }
                     }
                 }
@@ -156,6 +175,8 @@ public class IServiceHandler implements IService.Iface {
                 resp.getStatus().msg="删除数据成功";
                 break;
             case "update":
+                //TODO
+                //主键更改问题
                 table = db.getTables().get(t.table_name);
                 table.update(t.expression,t.conditions);
                 //更新成功后，返回插入后的表情况

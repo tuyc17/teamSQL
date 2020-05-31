@@ -16,7 +16,7 @@ public class IService {
 
     public ConnectResp connect(ConnectReq req) throws org.apache.thrift.TException;
 
-    public DisconnetResp disconnect(DisconnetResp req) throws org.apache.thrift.TException;
+    public DisconnectResp disconnect(DisconnectReq req) throws org.apache.thrift.TException;
 
     public ExecuteStatementResp executeStatement(ExecuteStatementReq req) throws org.apache.thrift.TException;
 
@@ -34,7 +34,7 @@ public class IService {
 
     public void connect(ConnectReq req, org.apache.thrift.async.AsyncMethodCallback<ConnectResp> resultHandler) throws org.apache.thrift.TException;
 
-    public void disconnect(DisconnetResp req, org.apache.thrift.async.AsyncMethodCallback<DisconnetResp> resultHandler) throws org.apache.thrift.TException;
+    public void disconnect(DisconnectReq req, org.apache.thrift.async.AsyncMethodCallback<DisconnectResp> resultHandler) throws org.apache.thrift.TException;
 
     public void executeStatement(ExecuteStatementReq req, org.apache.thrift.async.AsyncMethodCallback<ExecuteStatementResp> resultHandler) throws org.apache.thrift.TException;
 
@@ -112,20 +112,20 @@ public class IService {
       throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "connect failed: unknown result");
     }
 
-    public DisconnetResp disconnect(DisconnetResp req) throws org.apache.thrift.TException
+    public DisconnectResp disconnect(DisconnectReq req) throws org.apache.thrift.TException
     {
       send_disconnect(req);
       return recv_disconnect();
     }
 
-    public void send_disconnect(DisconnetResp req) throws org.apache.thrift.TException
+    public void send_disconnect(DisconnectReq req) throws org.apache.thrift.TException
     {
       disconnect_args args = new disconnect_args();
       args.setReq(req);
       sendBase("disconnect", args);
     }
 
-    public DisconnetResp recv_disconnect() throws org.apache.thrift.TException
+    public DisconnectResp recv_disconnect() throws org.apache.thrift.TException
     {
       disconnect_result result = new disconnect_result();
       receiveBase(result, "disconnect");
@@ -309,16 +309,16 @@ public class IService {
       }
     }
 
-    public void disconnect(DisconnetResp req, org.apache.thrift.async.AsyncMethodCallback<DisconnetResp> resultHandler) throws org.apache.thrift.TException {
+    public void disconnect(DisconnectReq req, org.apache.thrift.async.AsyncMethodCallback<DisconnectResp> resultHandler) throws org.apache.thrift.TException {
       checkReady();
       disconnect_call method_call = new disconnect_call(req, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class disconnect_call extends org.apache.thrift.async.TAsyncMethodCall<DisconnetResp> {
-      private DisconnetResp req;
-      public disconnect_call(DisconnetResp req, org.apache.thrift.async.AsyncMethodCallback<DisconnetResp> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+    public static class disconnect_call extends org.apache.thrift.async.TAsyncMethodCall<DisconnectResp> {
+      private DisconnectReq req;
+      public disconnect_call(DisconnectReq req, org.apache.thrift.async.AsyncMethodCallback<DisconnectResp> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.req = req;
       }
@@ -331,7 +331,7 @@ public class IService {
         prot.writeMessageEnd();
       }
 
-      public DisconnetResp getResult() throws org.apache.thrift.TException {
+      public DisconnectResp getResult() throws org.apache.thrift.TException {
         if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
@@ -812,7 +812,7 @@ public class IService {
       }
     }
 
-    public static class disconnect<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, disconnect_args, DisconnetResp> {
+    public static class disconnect<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, disconnect_args, DisconnectResp> {
       public disconnect() {
         super("disconnect");
       }
@@ -821,10 +821,10 @@ public class IService {
         return new disconnect_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<DisconnetResp> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+      public org.apache.thrift.async.AsyncMethodCallback<DisconnectResp> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
         final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<DisconnetResp>() { 
-          public void onComplete(DisconnetResp o) {
+        return new org.apache.thrift.async.AsyncMethodCallback<DisconnectResp>() { 
+          public void onComplete(DisconnectResp o) {
             disconnect_result result = new disconnect_result();
             result.success = o;
             try {
@@ -868,7 +868,7 @@ public class IService {
         return false;
       }
 
-      public void start(I iface, disconnect_args args, org.apache.thrift.async.AsyncMethodCallback<DisconnetResp> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, disconnect_args args, org.apache.thrift.async.AsyncMethodCallback<DisconnectResp> resultHandler) throws org.apache.thrift.TException {
         iface.disconnect(args.req,resultHandler);
       }
     }
@@ -4847,7 +4847,11 @@ public class IService {
     private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new beginTransaction_argsStandardSchemeFactory();
     private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new beginTransaction_argsTupleSchemeFactory();
 
+<<<<<<< HEAD
     public @org.apache.thrift.annotation.Nullable BeginTransactionReq req; // required
+=======
+    public @org.apache.thrift.annotation.Nullable DisconnectReq req; // required
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -4914,7 +4918,11 @@ public class IService {
     static {
       java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
       tmpMap.put(_Fields.REQ, new org.apache.thrift.meta_data.FieldMetaData("req", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+<<<<<<< HEAD
           new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, BeginTransactionReq.class)));
+=======
+          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, DisconnectReq.class)));
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(beginTransaction_args.class, metaDataMap);
     }
@@ -4922,8 +4930,13 @@ public class IService {
     public beginTransaction_args() {
     }
 
+<<<<<<< HEAD
     public beginTransaction_args(
       BeginTransactionReq req)
+=======
+    public disconnect_args(
+      DisconnectReq req)
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
     {
       this();
       this.req = req;
@@ -4934,7 +4947,11 @@ public class IService {
      */
     public beginTransaction_args(beginTransaction_args other) {
       if (other.isSetReq()) {
+<<<<<<< HEAD
         this.req = new BeginTransactionReq(other.req);
+=======
+        this.req = new DisconnectReq(other.req);
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
       }
     }
 
@@ -4948,11 +4965,19 @@ public class IService {
     }
 
     @org.apache.thrift.annotation.Nullable
+<<<<<<< HEAD
     public BeginTransactionReq getReq() {
       return this.req;
     }
 
     public beginTransaction_args setReq(@org.apache.thrift.annotation.Nullable BeginTransactionReq req) {
+=======
+    public DisconnectReq getReq() {
+      return this.req;
+    }
+
+    public disconnect_args setReq(@org.apache.thrift.annotation.Nullable DisconnectReq req) {
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
       this.req = req;
       return this;
     }
@@ -4978,7 +5003,11 @@ public class IService {
         if (value == null) {
           unsetReq();
         } else {
+<<<<<<< HEAD
           setReq((BeginTransactionReq)value);
+=======
+          setReq((DisconnectReq)value);
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
         }
         break;
 
@@ -5140,7 +5169,11 @@ public class IService {
           switch (schemeField.id) {
             case 1: // REQ
               if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+<<<<<<< HEAD
                 struct.req = new BeginTransactionReq();
+=======
+                struct.req = new DisconnectReq();
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
                 struct.req.read(iprot);
                 struct.setReqIsSet(true);
               } else { 
@@ -5199,7 +5232,11 @@ public class IService {
         org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
+<<<<<<< HEAD
           struct.req = new BeginTransactionReq();
+=======
+          struct.req = new DisconnectReq();
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
           struct.req.read(iprot);
           struct.setReqIsSet(true);
         }
@@ -5219,7 +5256,11 @@ public class IService {
     private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new beginTransaction_resultStandardSchemeFactory();
     private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new beginTransaction_resultTupleSchemeFactory();
 
+<<<<<<< HEAD
     public @org.apache.thrift.annotation.Nullable BeginTransactionResp success; // required
+=======
+    public @org.apache.thrift.annotation.Nullable DisconnectResp success; // required
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -5286,7 +5327,11 @@ public class IService {
     static {
       java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
       tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+<<<<<<< HEAD
           new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, BeginTransactionResp.class)));
+=======
+          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, DisconnectResp.class)));
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(beginTransaction_result.class, metaDataMap);
     }
@@ -5294,8 +5339,13 @@ public class IService {
     public beginTransaction_result() {
     }
 
+<<<<<<< HEAD
     public beginTransaction_result(
       BeginTransactionResp success)
+=======
+    public disconnect_result(
+      DisconnectResp success)
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
     {
       this();
       this.success = success;
@@ -5306,7 +5356,11 @@ public class IService {
      */
     public beginTransaction_result(beginTransaction_result other) {
       if (other.isSetSuccess()) {
+<<<<<<< HEAD
         this.success = new BeginTransactionResp(other.success);
+=======
+        this.success = new DisconnectResp(other.success);
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
       }
     }
 
@@ -5320,11 +5374,19 @@ public class IService {
     }
 
     @org.apache.thrift.annotation.Nullable
+<<<<<<< HEAD
     public BeginTransactionResp getSuccess() {
       return this.success;
     }
 
     public beginTransaction_result setSuccess(@org.apache.thrift.annotation.Nullable BeginTransactionResp success) {
+=======
+    public DisconnectResp getSuccess() {
+      return this.success;
+    }
+
+    public disconnect_result setSuccess(@org.apache.thrift.annotation.Nullable DisconnectResp success) {
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
       this.success = success;
       return this;
     }
@@ -5350,7 +5412,11 @@ public class IService {
         if (value == null) {
           unsetSuccess();
         } else {
+<<<<<<< HEAD
           setSuccess((BeginTransactionResp)value);
+=======
+          setSuccess((DisconnectResp)value);
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
         }
         break;
 
@@ -5512,7 +5578,11 @@ public class IService {
           switch (schemeField.id) {
             case 0: // SUCCESS
               if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+<<<<<<< HEAD
                 struct.success = new BeginTransactionResp();
+=======
+                struct.success = new DisconnectResp();
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
                 struct.success.read(iprot);
                 struct.setSuccessIsSet(true);
               } else { 
@@ -5571,7 +5641,11 @@ public class IService {
         org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
+<<<<<<< HEAD
           struct.success = new BeginTransactionResp();
+=======
+          struct.success = new DisconnectResp();
+>>>>>>> 6bcb55b151ca70467e6915b2bf22f86a4697f178
           struct.success.read(iprot);
           struct.setSuccessIsSet(true);
         }

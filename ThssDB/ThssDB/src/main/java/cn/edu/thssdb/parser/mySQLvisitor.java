@@ -56,7 +56,7 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
     public statement_data visitCondition(SQLParser.ConditionContext ctx) {
         Condition temp = new Condition();
         temp.left = ctx.expression(0).getText();
-        temp.right = ctx.expression(0).getText();
+        temp.right = ctx.expression(1).getText();
         temp.comparator = ctx.comparator().getText();
         result.conditions.add(temp);
         return result;
