@@ -2,7 +2,9 @@ package cn.edu.thssdb.index;
 
 import javafx.util.Pair;
 
-public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<Pair<K, V>> {
+import java.io.Serializable;
+
+public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<Pair<K, V>>, Serializable {
   // b+树的根节点
   BPlusTreeNode<K, V> root;
   // 关键字的总数

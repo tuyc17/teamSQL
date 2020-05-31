@@ -77,7 +77,8 @@ public class Client {
                         getTime();
                         break;
                     case Global.QUIT:
-                        //理论上这里是disconnect，但是有些bug，不是很理解，故不管
+                        sendDisconnect(session);
+                        session = -1;
                         open = false;
                         break;
                     default:
@@ -123,6 +124,18 @@ public class Client {
             logger.error(e.getMessage());
         }
     }
+    private static void sendDisconnect(long session) {
+        DisconnectReq req = new DisconnectReq(session);
+        try {
+            DisconnectResp resp = client.disconnect(req);
+            Status temp = resp.getStatus();
+            //异常处理省略,理论上应该通过这个观察是否异常
+            println(temp.msg);
+        } catch (TException e) {
+            logger.error(e.getMessage());
+        }
+    }
+
 
     private static void send_statment(long sessionId, String statment) {
         ExecuteStatementReq req = new ExecuteStatementReq(sessionId, statment);
