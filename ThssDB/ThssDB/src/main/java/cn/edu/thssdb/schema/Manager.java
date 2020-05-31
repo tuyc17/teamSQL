@@ -1,18 +1,19 @@
 package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.server.ThssDB;
-
 import java.io.*;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import cn.edu.thssdb.utils.Global;
 
 public class Manager {
   private HashMap<String, Database> databases;
   private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
   //工作状态的数据库
-  private Database workingDb;
+  public Database workingDb;
 
   public static Manager getInstance() {
     return Manager.ManagerHolder.INSTANCE;
@@ -21,11 +22,10 @@ public class Manager {
   public Manager() {
     // TODO
     databases = new HashMap<String, Database>();
-    //初始化的时候指定一个初始db作为工作db
-
     try
     {
-      FileReader fileReader = new FileReader("../data/manager.txt");
+      String root = System.getProperty("user.dir");
+      FileReader fileReader = new FileReader(root+"/data/manager.txt");
       BufferedReader bufferedReader = new BufferedReader(fileReader);
       String line;
       while ((line = bufferedReader.readLine()) != null)
@@ -38,10 +38,16 @@ public class Manager {
     } catch (IOException e) {
       e.printStackTrace();
     }
-
+    //初始化的时候指定一个初始db作为工作db
+    //暂定为default
+    workingDb = databases.get("default");
   }
 
-  private void createDatabaseIfNotExists(String name) {
+  public Database getWorkingDb() {
+    return workingDb;
+  }
+
+  public void createDatabaseIfNotExists(String name) {
     // TODO
     if(databases.containsKey(name))
     {
@@ -50,39 +56,37 @@ public class Manager {
     }
     else
     {
-      Database db = new Database(name);
-      databases.put(name, db);
-
       try
       {
-        File file = new File("../data/databases/"+name+".txt");
+        File file = new File(Global.root+"/data/databases/"+name+".txt");
         file.createNewFile();
-
-        FileWriter fileWriter = new FileWriter("../data/manager.txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt",true);
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write(name + '\n');
-        fileWriter.close();
+        bufferedWriter.flush();
         bufferedWriter.close();
       } catch (IOException e) {
         e.printStackTrace();
       }
+      Database db = new Database(name);
+      databases.put(name, db);
     }
   }
 
-  private void deleteDatabase(String name) {
+  public void deleteDatabase(String name) {
     // TODO
     if(databases.containsKey(name))
     {
       databases.remove(name);
       try
       {
+        //TODO
         //应该要保证数据库中没有表了才能删除
-        File file = new File("../data/databases/"+name+".txt");
+        File file = new File(Global.root+"/data/databases/"+name+".txt");
         file.delete();
 
-        FileWriter fileWriter = new FileWriter("../data/manager.txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        bufferedWriter.write("");
         Set<String> keys = databases.keySet();
         Iterator<String> iterator = keys.iterator();
         while (iterator.hasNext())
@@ -90,8 +94,9 @@ public class Manager {
           String key = iterator.next();
           bufferedWriter.write(key + "\n");
         }
-        fileWriter.close();
+        bufferedWriter.flush();
         bufferedWriter.close();
+
       } catch (IOException e) {
         e.printStackTrace();
       }

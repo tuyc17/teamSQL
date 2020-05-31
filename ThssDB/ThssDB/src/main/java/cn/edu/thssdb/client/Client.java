@@ -129,6 +129,21 @@ public class Client {
             Status temp = resp.getStatus();
             //异常处理省略,理论上应该通过这个观察是否异常
             System.out.println("已收到语句回复");
+            if (temp.code==Global.SUCCESS_CODE){
+                System.out.println("语句执行成功");
+            }
+            else if (temp.code==Global.FAILURE_CODE){
+                System.out.println("语句执行失败");
+            }
+            System.out.print("服务端消息:");
+            System.out.println(temp.msg);
+            if (resp.columnsList!=null){
+                System.out.println(resp.columnsList.toString());
+            }
+            if (resp.rowList!=null){
+                System.out.println(resp.rowList.toString());
+            }
+            System.out.println("");
         } catch (TException e) {
             logger.error(e.getMessage());
         }
