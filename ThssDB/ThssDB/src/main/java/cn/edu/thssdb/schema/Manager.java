@@ -1,12 +1,12 @@
 package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.server.ThssDB;
-
 import java.io.*;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import cn.edu.thssdb.utils.Global;
 
 public class Manager {
   private HashMap<String, Database> databases;
@@ -21,11 +21,10 @@ public class Manager {
   public Manager() {
     // TODO
     databases = new HashMap<String, Database>();
-    //初始化的时候指定一个初始db作为工作db
-
     try
     {
-      FileReader fileReader = new FileReader("../data/manager.txt");
+      String root = System.getProperty("user.dir");
+      FileReader fileReader = new FileReader(root+"/data/manager.txt");
       BufferedReader bufferedReader = new BufferedReader(fileReader);
       String line;
       while ((line = bufferedReader.readLine()) != null)
@@ -38,10 +37,17 @@ public class Manager {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    //初始化的时候指定一个初始db作为工作db
+    //暂定为default
+    workingDb = databases.get("default");
 
   }
 
-  private void createDatabaseIfNotExists(String name) {
+  public Database getWorkingDb() {
+    return workingDb;
+  }
+
+  public void createDatabaseIfNotExists(String name) {
     // TODO
     if(databases.containsKey(name))
     {
@@ -55,10 +61,10 @@ public class Manager {
 
       try
       {
-        File file = new File("../data/databases/"+name+".txt");
+        File file = new File(Global.root+"/data/databases/"+name+".txt");
         file.createNewFile();
 
-        FileWriter fileWriter = new FileWriter("../data/manager.txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write(name + '\n');
         fileWriter.close();
@@ -69,7 +75,7 @@ public class Manager {
     }
   }
 
-  private void deleteDatabase(String name) {
+  public void deleteDatabase(String name) {
     // TODO
     if(databases.containsKey(name))
     {
@@ -77,10 +83,10 @@ public class Manager {
       try
       {
         //应该要保证数据库中没有表了才能删除
-        File file = new File("../data/databases/"+name+".txt");
+        File file = new File(Global.root+"/data/databases/"+name+".txt");
         file.delete();
 
-        FileWriter fileWriter = new FileWriter("../data/manager.txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write("");
         Set<String> keys = databases.keySet();

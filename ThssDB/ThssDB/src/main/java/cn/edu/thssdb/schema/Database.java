@@ -1,8 +1,12 @@
 package cn.edu.thssdb.schema;
 
+import cn.edu.thssdb.index.BPlusTree;
+import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.query.QueryResult;
 import cn.edu.thssdb.query.QueryTable;
 import cn.edu.thssdb.type.ColumnType;
+import cn.edu.thssdb.utils.Global;
+import javafx.util.Pair;
 
 import java.io.*;
 import java.util.*;
@@ -20,6 +24,48 @@ public class Database {
     this.lock = new ReentrantReadWriteLock();
     recover();
   }
+  // 字符串转Entry
+  public static Entry GetEntry(ColumnType type,String temp){
+      Entry ret = null;
+      switch (type){
+        case STRING:
+          ret = new Entry(temp);
+          break;
+        case INT:
+          ret = new Entry(Integer.parseInt(temp));
+          break;
+        case LONG:
+          ret = new Entry(Long.parseLong(temp));
+          break;
+        case FLOAT:
+          ret = new Entry(Float.parseFloat(temp));
+          break;
+        case DOUBLE:
+          ret = new Entry(Double.parseDouble(temp));
+          break;
+      }
+      return ret;
+  }
+  //B+树转list<list<String>>
+  public static List<List<String>> BTreeParseLLS(BPlusTree<Entry, Row> index){
+    List<List<String>> ret= new ArrayList<>();
+    BPlusTreeIterator<Entry, Row> iterator=index.iterator();
+    while (iterator.hasNext())
+    {
+      Pair<Entry, Row> pair = iterator.next();
+      ArrayList<Entry> entries = pair.getValue().getEntries();
+      List<String> temp_list = new ArrayList<>();
+      for (int i=0;i<entries.size();i++){
+        temp_list.add(String.valueOf(entries.get(i)));
+      }
+      ret.add(temp_list);
+    }
+    return ret;
+  }
+  public HashMap<String, Table> getTables() {
+    return tables;
+  }
+
   //这里实现了两种方法
   //一个是每次操作都直接写入文件
   //一个是quit执行时再写入文件
@@ -34,7 +80,7 @@ public class Database {
 
     try
     {
-      FileReader fileReader = new FileReader("../data/databases/"+name+".txt");
+      FileReader fileReader = new FileReader(Global.root+"/data/databases/"+name+".txt");
       BufferedReader bufferedReader = new BufferedReader(fileReader);
       String line;
       while ((line = bufferedReader.readLine()) != null)
@@ -58,19 +104,19 @@ public class Database {
       new_keys.removeAll(notChange);
       //删除已经删除的表的文件
       for (String s: old_keys) {
-        File file = new File("../data/tables/columns/"+s+".txt");
+        File file = new File(Global.root+"/data/tables/columns/"+s+".txt");
         file.delete();
-        file = new File("../data/tables/rows/"+s+".txt");
+        file = new File(Global.root+"/data/tables/rows/"+s+".txt");
         file.delete();
       }
       //创建已经创建的表的文件
       for (String s: new_keys) {
         //创建元信息文件
-        File file = new File("../data/tables/columns/"+s+".txt");
+        File file = new File(Global.root+"/data/tables/columns/"+s+".txt");
         file.createNewFile();
         //写元信息
         Table table = tables.get(s);
-        FileWriter fileWriter = new FileWriter("../data/tables/columns/"+s+".txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+s+".txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         for (Column c: table.columns) {
           bufferedWriter.write(c.toString()+"\n");
@@ -78,7 +124,7 @@ public class Database {
         fileWriter.close();
         bufferedWriter.close();
         //创建实际数据文件
-        file = new File("../data/tables/rows/"+s+".txt");
+        file = new File(Global.root+"/data/tables/rows/"+s+".txt");
         file.createNewFile();
         //写实际数据
         //在这里调用Table类中的persist函数
@@ -86,7 +132,7 @@ public class Database {
 
       }
       //更新数据库文件
-      FileWriter fileWriter = new FileWriter("../data/databases/"+name+".txt");
+      FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
       BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
       bufferedWriter.write("");
       for(String s : new_keys)
@@ -117,24 +163,29 @@ public class Database {
       try
       {
         // 向数据库的文件中增加表的名字
-        FileWriter fileWriter = new FileWriter("../data/databases/"+name+".txt");
+
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write(tableName+"\n");
-        fileWriter.close();
         bufferedWriter.close();
+        fileWriter.close();
+
 
         //创建表的元数据和实际数据
-        File file = new File("../data/tables/columns/"+tableName+".txt");
+        File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
         file.createNewFile();
-        fileWriter = new FileWriter("../data/tables/columns/"+tableName+".txt");
+        fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
         bufferedWriter = new BufferedWriter(fileWriter);
         for (Column c: columns) {
+          System.out.println(c.toString());
           bufferedWriter.write(c.toString()+"\n");
         }
-        fileWriter.close();
+        //先关buffer
         bufferedWriter.close();
+        fileWriter.close();
 
-        file = new File("../data/tables/rows/"+tableName+".txt");
+
+        file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
         file.createNewFile();
       }
       catch (IOException e) {
@@ -151,7 +202,7 @@ public class Database {
       try
       {
         //删除数据库文件中对应表的名字
-        FileWriter fileWriter = new FileWriter("../data/databases/"+name+".txt");
+        FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write("");
         Set<String> keys = tables.keySet();
@@ -164,9 +215,9 @@ public class Database {
         fileWriter.close();
         bufferedWriter.close();
         //删除表对应的文件
-        File file = new File("../data/tables/columns/"+tableName+".txt");
+        File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
         file.delete();
-        file = new File("../data/tables/rows/"+tableName+".txt");
+        file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
         file.delete();
       }
       catch (IOException e)
@@ -192,13 +243,13 @@ public class Database {
     try
     {
       //读数据库的文件得到数据库中所有表的名字并重新创建
-      FileReader fileReader = new FileReader("../data/databases/"+name+".txt");
+      FileReader fileReader = new FileReader(Global.root+"/data/databases/"+name+".txt");
       BufferedReader bufferedReader = new BufferedReader(fileReader);
       String line;
       while ((line = bufferedReader.readLine()) != null)
       {
         //读每个表的元信息文件还原成columns
-        FileReader fileReader1 = new FileReader("../data/tables/columns/"+line+".txt");
+        FileReader fileReader1 = new FileReader(Global.root+"/data/tables/columns/"+line+".txt");
         BufferedReader bufferedReader1 = new BufferedReader(fileReader1);
         String line1;
         ArrayList<Column> columnArrayList = new ArrayList<>();
@@ -233,8 +284,8 @@ public class Database {
           Column c = new Column(attr[0], type, Integer.parseInt(attr[2]), bool, Integer.parseInt(attr[4]));
           columnArrayList.add(c);
         }
-        fileReader1.close();
         bufferedReader1.close();
+        fileReader1.close();
         Table table = new Table(name, line, (Column[])columnArrayList.toArray());
         tables.put(line, table);
       }

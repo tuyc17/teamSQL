@@ -3,9 +3,10 @@ package cn.edu.thssdb.schema;
 import cn.edu.thssdb.index.BPlusTree;
 import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.type.ColumnType;
+import cn.edu.thssdb.schema.Column;
 import javafx.scene.control.Tab;
 import javafx.util.Pair;
-
+import cn.edu.thssdb.utils.Global;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +39,13 @@ public class Table implements Iterable<Row> {
     }
     recover();
   }
+  public List<String> GetColumnName(){
+    List<String> ret = new ArrayList<>();
+    for (int i=1;i<columns.size();i++){
+      ret.add(columns.get(i).getName());
+    }
+    return ret;
+  }
 
   private void recover() {
     // TODO
@@ -54,12 +62,13 @@ public class Table implements Iterable<Row> {
     index.put(entries[primaryIndex], row);
   }
 
-  public void delete(List<Condition> conditions) {
+  public void delete(List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
+    // 暂时只操作一个
 
-    String comparator = "";
-    String left = "";
-    String right = "";
+    String comparator = conditions.get(0).comparator;
+    String left = conditions.get(0).left;
+    String right = conditions.get(0).right;
 
     switch (comparator)
     {
@@ -546,11 +555,11 @@ public class Table implements Iterable<Row> {
     }
   }
 
-  public void update(Condition expression, List<Condition> conditions) {
+  public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
-    String expression_op ="";
-    String expression_r ="";
-    String expression_l ="";
+    String expression_op =expression.comparator;
+    String expression_r =expression.left;
+    String expression_l =expression.right;
 
     int updateIndex = 0;
     for (int i = 0; i < columns.size(); i++)
@@ -583,9 +592,11 @@ public class Table implements Iterable<Row> {
         break;
     }
 
-    String comparator = "";
-    String left = "";
-    String right = "";
+    // 暂时只操作一个
+
+    String comparator = conditions.get(0).comparator;
+    String left = conditions.get(0).left;
+    String right = conditions.get(0).right;
 
     switch (comparator)
     {
@@ -1169,7 +1180,7 @@ public class Table implements Iterable<Row> {
     // TODO
     try
     {
-      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(new File("../data/tables/rows/"+tableName+".txt")));
+      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(new File(Global.root+"/data/tables/rows/"+tableName+".txt")));
       out.writeObject(this.index);
       out.close();
     }
@@ -1183,7 +1194,16 @@ public class Table implements Iterable<Row> {
   private BPlusTree<Entry, Row> deserialize() {
     // TODO
     try {
-      ObjectInputStream in = new ObjectInputStream(new FileInputStream(new File("../data/tables/rows/"+tableName+".txt")));
+
+      File tempFile = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
+      if (!tempFile.exists()){
+        boolean tempBool = tempFile.createNewFile();
+      }
+      if (tempFile.length()==0){
+        BPlusTree<Entry, Row> tree = new BPlusTree<Entry, Row>();
+        return tree;
+      }
+      ObjectInputStream in = new ObjectInputStream(new FileInputStream(tempFile));
       BPlusTree<Entry, Row> tree = (BPlusTree<Entry, Row>)in.readObject();
       in.close();
       return tree;

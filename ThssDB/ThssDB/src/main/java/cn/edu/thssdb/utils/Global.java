@@ -2,10 +2,10 @@ package cn.edu.thssdb.utils;
 
 public class Global {
   public static int fanout = 129;
-
+  public static int MAX_LEN = 1000;
   public static int SUCCESS_CODE = 0;
   public static int FAILURE_CODE = -1;
-
+  public static String root = System.getProperty("user.dir");
   public static String DEFAULT_SERVER_HOST = "127.0.0.1";
   public static int DEFAULT_SERVER_PORT = 6667;
 
@@ -15,4 +15,5 @@ public class Global {
   public static final String CONNECT= "connect";
   public static final String DISCONNECT= "disconnect";
   public static final String S_URL_INTERNAL = "jdbc:default:connection";
+
 }

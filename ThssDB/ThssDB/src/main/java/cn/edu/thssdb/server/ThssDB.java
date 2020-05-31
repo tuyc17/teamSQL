@@ -26,7 +26,7 @@ public class ThssDB {
     private static TServerSocket transport;
     private static TServer server;
     public List<Long> sessions = new ArrayList<>();
-    private Manager manager;
+    public Manager manager = new Manager();
 
     public static ThssDB getInstance() {
         return ThssDBHolder.INSTANCE;
@@ -79,7 +79,7 @@ public class ThssDB {
             transport = new TServerSocket(Global.DEFAULT_SERVER_PORT);
             server = new TSimpleServer(new TServer.Args(transport).processor(processor));
             logger.info("Starting ThssDB ...");
-
+            //新建manager
 
             //此处用于测试
 //            IServiceHandler t = new IServiceHandler();
