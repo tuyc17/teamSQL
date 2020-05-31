@@ -14,6 +14,9 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import cn.edu.thssdb.parser.SQLLexer;
 import java.util.Date;
+import java.io.ByteArrayOutputStream;
+import java.io.FilterOutputStream;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 
@@ -65,6 +68,10 @@ public class IServiceHandler implements IService.Iface {
         CharStream input = CharStreams.fromString(req.statement.toLowerCase());
         //转成小写以规避大小写问题
         SQLLexer lexer = new SQLLexer(input);
+        //此处截取输出日志
+        PrintStream oldPrintStream = System.err; //将原来的System.out交给printStream 对象保存
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(bos));//设置新的out
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         SQLParser parser = new SQLParser(tokens);
         ParseTree tree = parser.sql_stmt_list(); // parse
@@ -75,9 +82,11 @@ public class IServiceHandler implements IService.Iface {
         if (t==null){
             //语法错误
             resp.status.code=Global.FAILURE_CODE;
-            resp.status.msg ="语法错误！";
+            resp.status.msg =bos.toString();
+            System.setErr(oldPrintStream);//恢复原来的System.out
             return resp;
         }
+        System.setErr(oldPrintStream);//恢复原来的System.out
         System.out.print("收到信息，类型为:");
         System.out.print(t.kind);
         //在此处语法解析完成，并生成 statement_data t，请对t进行访问，以修改数据库
