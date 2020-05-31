@@ -38,4 +38,14 @@ public class Column implements Comparable<Column> {
   public boolean isSame(String n) { return name.equals(n); }
 
   public ColumnType getType() { return type; }
+
+  // tuyc
+  static Column parseColumnDef(String defStr) {
+    String[] defListStr = defStr.split(",");
+    return new Column(defListStr[0], // name
+            ColumnType.valueOf(defListStr[1]),  // ColumnType
+            Integer.parseInt(defListStr[2]),  // primary
+            defListStr[3].equals("true"), // notNull
+            Integer.parseInt(defListStr[2])); // maxLength
+  }
 }

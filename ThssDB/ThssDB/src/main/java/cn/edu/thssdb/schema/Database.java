@@ -16,13 +16,11 @@ import cn.edu.thssdb.utils.Global;
 
 public class Database {
 
-  private String name;
-  private HashMap<String, Table> tables;
-  // ReentrantReadWriteLock:
-  // 可重入（每次加锁count+1）
+  String name;
+  HashMap<String, Table> tables;
+  // ReentrantReadWriteLock：可重入（每次加锁count+1）
   // 读写分离：写数据和读数据分开，加上两把不同的锁
-  // 锁降级：线程获取写入锁后可以获取读取锁，然后释放写入锁，实现写锁->读锁
-  // 有效避免锁升级：不会出现读锁->写锁
+  // 锁降级，实现写锁->读锁；有效避免锁升级：不会出现读锁->写锁
   ReentrantReadWriteLock lock;
 
   public Database(String name) {
@@ -31,6 +29,7 @@ public class Database {
     this.lock = new ReentrantReadWriteLock();
     recover();
   }
+
   // 字符串转Entry
   public static Entry GetEntry(ColumnType type,String temp){
       Entry ret = null;
@@ -53,6 +52,7 @@ public class Database {
       }
       return ret;
   }
+
   //B+树转list<list<String>>
   public static List<List<String>> BTreeParseLLS(BPlusTree<Entry, Row> index){
     List<List<String>> ret= new ArrayList<>();
@@ -73,171 +73,240 @@ public class Database {
     }
     return ret;
   }
+
   public HashMap<String, Table> getTables() {
-    return tables;
+    try {
+      this.lock.readLock().lock();
+      return tables;
+    } finally {
+      this.lock.readLock().unlock();
+    }
   }
 
-  //这里实现了两种方法
-  //一个是每次操作都直接写入文件
-  //一个是quit执行时再写入文件
-  //具体测试看哪个更好
-  private void persist() {
-    // TODO
-    ArrayList<String> old_keys = new ArrayList<>();
-    Set<String> new_keys = tables.keySet();
-    Iterator<String> iterator = new_keys.iterator();
-
-    ArrayList<String> notChange = new ArrayList<>();
-
-    try
-    {
-      FileReader fileReader = new FileReader(Global.root+"/data/databases/"+name+".txt");
-      BufferedReader bufferedReader = new BufferedReader(fileReader);
-      String line;
-      while ((line = bufferedReader.readLine()) != null)
-      {
-        old_keys.add(line);
+////  这里实现了两种方法
+////  一个是每次操作都直接写入文件
+////  一个是quit执行时再写入文件
+////  具体测试看哪个更好
+//  void persist() {
+//    // TODO
+//    try {
+//      this.lock.writeLock().lock();
+//      ArrayList<String> old_keys = new ArrayList<>();
+//      Set<String> new_keys = tables.keySet();
+//      Iterator<String> iterator = new_keys.iterator();
+//
+//      ArrayList<String> notChange = new ArrayList<>();
+//
+//      try
+//      {
+//        FileReader fileReader = new FileReader(Global.root+"/data/databases/"+name+".txt");
+//        BufferedReader bufferedReader = new BufferedReader(fileReader);
+//        String line;
+//        while ((line = bufferedReader.readLine()) != null)
+//        {
+//          old_keys.add(line);
+//        }
+//        //比较老键和新键得到那些表被删了，那些表是新建的
+//        while (iterator.hasNext())
+//        {
+//          String key = iterator.next();
+//          for (String s:old_keys) {
+//            if(s.equals(key))
+//            {
+//              notChange.add(s);
+//            }
+//          }
+//        }
+//        //old_keys除去notChange得到被删除的
+//        old_keys.removeAll(notChange);
+//        //new_keys除去notChange得到新增的
+//        new_keys.removeAll(notChange);
+//        //删除已经删除的表的文件
+//        for (String s: old_keys) {
+//          File file = new File(Global.root+"/data/tables/columns/"+s+".txt");
+//          file.delete();
+//          file = new File(Global.root+"/data/tables/rows/"+s+".txt");
+//          file.delete();
+//        }
+//        //创建已经创建的表的文件
+//        for (String s: new_keys) {
+//          //创建元信息文件
+//          File file = new File(Global.root+"/data/tables/columns/"+s+".txt");
+//          file.createNewFile();
+//          //写元信息
+//          Table table = tables.get(s);
+//          FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+s+".txt");
+//          BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+//          for (Column c: table.columns) {
+//            bufferedWriter.write(c.toString()+"\n");
+//          }
+//          fileWriter.close();
+//          bufferedWriter.close();
+//          //创建实际数据文件
+//          file = new File(Global.root+"/data/tables/rows/"+s+".txt");
+//          file.createNewFile();
+//          //写实际数据
+//          //在这里调用Table类中的persist函数
+//          //TODO
+//
+//        }
+//        //更新数据库文件
+//        FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
+//        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+//        bufferedWriter.write("");
+//        for(String s : new_keys)
+//        {
+//          bufferedWriter.write(s+'\n');
+//        }
+//        fileWriter.close();
+//        bufferedWriter.close();
+//        fileReader.close();
+//        bufferedReader.close();
+//      } catch (IOException e) {
+//        e.printStackTrace();
+//      }
+//    } finally {
+//      this.lock.writeLock().unlock();
+//    }
+//  }
+  // tuyc:反正这个persist你们弃用了，不如拿来我用（
+  boolean persist() {
+    try {
+      lock.writeLock().lock();
+      if (tables == null) {
+        return true;
       }
-      //比较老键和新键得到那些表被删了，那些表是新建的
-      while (iterator.hasNext())
-      {
-        String key = iterator.next();
-        for (String s:old_keys) {
-          if(s.equals(key))
-          {
-            notChange.add(s);
+      File dir = new File("data" + File.separator + name);
+      if (!dir.exists() && !dir.mkdirs()) {
+        System.err.println("Fail to persist database due to mkdirs error!");
+        return false;
+      }
+      ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(dir.toString()+File.separator+"TABLES_NAME"));
+      for (String tableName: tables.keySet()) {
+        oos.writeObject(tableName);
+        ObjectOutputStream oosSchema = new ObjectOutputStream(new FileOutputStream(dir.toString()+File.separator+tableName+"_SCHEMA"));
+        for (Column c: tables.get(tableName).columns) {
+          oosSchema.writeObject(c.toString());
+        }
+        oosSchema.close();
+        Table table = tables.get(tableName);
+        if (table == null) {
+          System.err.println("Table is null in index while trying to persist database.");
+          return false;
+        }
+        else {
+          if (!table.persist()) {
+            return false;
           }
         }
       }
-      //old_keys除去notChange得到被删除的
-      old_keys.removeAll(notChange);
-      //new_keys除去notChange得到新增的
-      new_keys.removeAll(notChange);
-      //删除已经删除的表的文件
-      for (String s: old_keys) {
-        File file = new File(Global.root+"/data/tables/columns/"+s+".txt");
-        file.delete();
-        file = new File(Global.root+"/data/tables/rows/"+s+".txt");
-        file.delete();
+      oos.close();
+      return true;
+    }
+    catch (IOException e) {
+      System.err.print("Fail to persist database due to IOException!");
+      return false;
+    }
+    finally {
+      lock.writeLock().unlock();
+    }
+  }
+  // tuyc: getTable
+  Table getTable(String tableName) {
+    try {
+      lock.readLock().lock();
+      Table table = tables.get(tableName);
+      if (table == null) {
+        throw new RuntimeException();
       }
-      //创建已经创建的表的文件
-      for (String s: new_keys) {
-        //创建元信息文件
-        File file = new File(Global.root+"/data/tables/columns/"+s+".txt");
-        file.createNewFile();
-        //写元信息
-        Table table = tables.get(s);
-        FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+s+".txt");
-        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        for (Column c: table.columns) {
-          bufferedWriter.write(c.toString()+"\n");
-        }
-        fileWriter.close();
-        bufferedWriter.close();
-        //创建实际数据文件
-        file = new File(Global.root+"/data/tables/rows/"+s+".txt");
-        file.createNewFile();
-        //写实际数据
-        //在这里调用Table类中的persist函数
-        //TODO
-
-      }
-      //更新数据库文件
-      FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
-      BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-      bufferedWriter.write("");
-      for(String s : new_keys)
-      {
-        bufferedWriter.write(s+'\n');
-      }
-      fileWriter.close();
-      bufferedWriter.close();
-      fileReader.close();
-      bufferedReader.close();
-    } catch (IOException e) {
-      e.printStackTrace();
+      return table;
+    }
+    finally {
+      lock.readLock().unlock();
     }
   }
 
   public void create(String tableName, Column[] columns) {
     // TODO
-    if(tables.containsKey(tableName))
-    {
-      //告知客户端表存在
-      return;
-    }
-    else
-    {
-      try
-      {
-        // 向数据库的文件中增加表的名字
+    try {
+      this.lock.writeLock().lock();
+      if(tables.containsKey(tableName)) {
+        //告知客户端表存在
+        return;
+      }
+      else {
+        try {
+          // 向数据库的文件中增加表的名字
 
-        FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
-        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        bufferedWriter.write(tableName+"\n");
-        bufferedWriter.flush();
-        bufferedWriter.close();
+          FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
+          BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+          bufferedWriter.write(tableName+"\n");
+          bufferedWriter.flush();
+          bufferedWriter.close();
 
-        //创建表的元数据和实际数据
-        File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
-        file.createNewFile();
-        fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
-        bufferedWriter = new BufferedWriter(fileWriter);
-        for (Column c: columns) {
-          System.out.println(c.toString());
-          bufferedWriter.write(c.toString()+"\n");
+          //创建表的元数据和实际数据
+          File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
+          file.createNewFile();
+          fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
+          bufferedWriter = new BufferedWriter(fileWriter);
+          for (Column c: columns) {
+            System.out.println(c.toString());
+            bufferedWriter.write(c.toString()+"\n");
+          }
+          //先关buffer
+          bufferedWriter.flush();
+          bufferedWriter.close();
+
+          file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
+          file.createNewFile();
         }
-        //先关buffer
-        bufferedWriter.flush();
-        bufferedWriter.close();
+        catch (IOException e) {
+          e.printStackTrace();
+        }
 
-        file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-        file.createNewFile();
+        Table table = new Table(this.name, tableName, columns);
+        tables.put(tableName, table);
+
       }
-      catch (IOException e) {
-        e.printStackTrace();
-      }
-
-      Table table = new Table(this.name, tableName, columns);
-      tables.put(tableName, table);
-
+    } finally {
+      this.lock.writeLock().unlock();
     }
   }
 
   public void drop(String tableName) {
     // TODO
-    if (tables.containsKey(tableName))
-    {
-      tables.remove(tableName);
-      try
-      {
-        //删除数据库文件中对应表的名字
-        FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
-        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        bufferedWriter.write("");
-        Set<String> keys = tables.keySet();
-        Iterator<String> iterator = keys.iterator();
-        while (iterator.hasNext())
-        {
-          String key = iterator.next();
-          bufferedWriter.write(key+"\n");
+    try {
+      this.lock.writeLock().lock();
+      if (tables.containsKey(tableName)) {
+        tables.remove(tableName);
+        try {
+          //删除数据库文件中对应表的名字
+          FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
+          BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+          bufferedWriter.write("");
+          Set<String> keys = tables.keySet();
+          Iterator<String> iterator = keys.iterator();
+          while (iterator.hasNext()) {
+            String key = iterator.next();
+            bufferedWriter.write(key+"\n");
+          }
+          fileWriter.close();
+          bufferedWriter.close();
+          //删除表对应的文件
+          File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
+          file.delete();
+          file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
+          file.delete();
         }
-        fileWriter.close();
-        bufferedWriter.close();
-        //删除表对应的文件
-        File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
-        file.delete();
-        file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-        file.delete();
+        catch (IOException e) {
+          e.printStackTrace();
+        }
       }
-      catch (IOException e)
-      {
-        e.printStackTrace();
+      else {
+        //告诉客户端表不存在
       }
-    }
-    else
-    {
-      //告诉客户端表不存在
+    } finally {
+      this.lock.writeLock().unlock();
     }
   }
 
@@ -250,14 +319,13 @@ public class Database {
 
   private void recover() {
     // TODO
-    try
-    {
+    try {
+      this.lock.writeLock().lock();
       //读数据库的文件得到数据库中所有表的名字并重新创建
       FileReader fileReader = new FileReader(Global.root+"/data/databases/"+name+".txt");
       BufferedReader bufferedReader = new BufferedReader(fileReader);
       String line;
-      while ((line = bufferedReader.readLine()) != null)
-      {
+      while ((line = bufferedReader.readLine()) != null) {
         //读每个表的元信息文件还原成columns
         FileReader fileReader1 = new FileReader(Global.root+"/data/tables/columns/"+line+".txt");
         BufferedReader bufferedReader1 = new BufferedReader(fileReader1);
@@ -303,6 +371,8 @@ public class Database {
       bufferedReader.close();
     } catch (Exception e) {
       e.printStackTrace();
+    } finally {
+      this.lock.writeLock().unlock();
     }
   }
 //当数据库切换以及服务器关闭时调用这个函数

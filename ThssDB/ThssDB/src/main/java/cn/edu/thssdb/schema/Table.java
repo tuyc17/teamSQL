@@ -1,5 +1,7 @@
 package cn.edu.thssdb.schema;
 
+import cn.edu.thssdb.exception.DuplicateKeyException;
+import cn.edu.thssdb.exception.KeyNotExistException;
 import cn.edu.thssdb.index.BPlusTree;
 import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.type.ColumnType;
@@ -16,7 +18,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Table implements Iterable<Row> {
-  ReentrantReadWriteLock lock;  // 事务锁  /////////////////////////////////////////////////////////////
+  ReentrantReadWriteLock lock;  // 事务锁
   private String databaseName;
   public String tableName;
   public ArrayList<Column> columns;     // 一张表的所有属性的元信息
@@ -49,10 +51,44 @@ public class Table implements Iterable<Row> {
     return ret;
   }
 
+  // tuyc:同Database.persist，反正你们不用，不如拿来我用（
+  boolean persist() {
+    try {
+      lock.writeLock().lock();
+      // 下面这个try-catch不太妙，是我自己实现的serialize，恐怕要出问题
+      try {
+        File dir = new File("data" + File.separator + databaseName + File.separator + "data");
+        if (!dir.exists() && !dir.mkdirs()) {
+          System.err.print("Fail to serialize due to mkdirs error!");
+          return false;
+        }
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(dir.toString()+File.separator+tableName));
+        for (Row row : this) {
+          oos.writeObject(row);
+        }
+        oos.close();
+        return true;
+      }
+      catch (IOException e) {
+        System.err.print("Fail to serialize due to IOException!");
+        return false;
+      }
+    }
+    finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   private void recover() {
     // TODO
-    // 通过反序列化得到的rows重新构建b+树
-    this.index = deserialize();
+    try {
+      lock.writeLock().lock();
+      // 通过反序列化得到的rows重新构建b+树
+      this.index = deserialize();
+    } finally {
+      lock.writeLock().unlock();
+    }
+
   }
   //检查输入的变量类型是否和columns给出的信息一致
   //这里看是直接传entry的数组好
@@ -66,6 +102,31 @@ public class Table implements Iterable<Row> {
     serialize();
   }
 
+  // tuyc's functional functions
+  boolean checkRowExist(Entry primary) {
+    try {
+      lock.readLock().lock();
+      return index.contains(primary);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  // tuyc's override
+  void insert(Row row) throws DuplicateKeyException {
+    // TODO
+    try {
+      lock.writeLock().lock();
+      Entry primary = row.getEntries().get(primaryIndex);
+      if (checkRowExist(primary)) {
+        throw new DuplicateKeyException();
+      }
+      index.put(primary, row);
+    }
+    finally {
+      lock.writeLock().unlock();
+    }
+  }
 
   public void delete(List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
@@ -561,6 +622,21 @@ public class Table implements Iterable<Row> {
     }
   }
 
+  // tuyc's override
+  void delete(Row row) {
+    // TODO
+    try {
+      lock.writeLock().lock();
+      Entry primary = row.getEntries().get(primaryIndex);
+      if (!checkRowExist(primary)) {
+        throw new KeyNotExistException();
+      }
+      index.remove(primary);
+    }
+    finally {
+      lock.writeLock().unlock();
+    }
+  }
 
   public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
@@ -1179,6 +1255,21 @@ public class Table implements Iterable<Row> {
         break;
     }
 
+  }
+
+  // tuyc's override
+  void update(Row row) {
+    // TODO
+    try {
+      lock.writeLock().lock();
+      Entry entry = row.getEntries().get(primaryIndex);
+      if (!index.contains(entry))
+        throw new KeyNotExistException();
+      index.update(entry, row);
+    }
+    finally {
+      lock.writeLock().unlock();
+    }
   }
 
   //根据网上的教程序列化和反序列化需要implement Serializable接口最后测试的时候可能table类要加上
