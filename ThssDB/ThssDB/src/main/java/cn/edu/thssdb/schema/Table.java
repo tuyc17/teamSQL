@@ -16,10 +16,11 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Table implements Iterable<Row> {
-  ReentrantReadWriteLock lock;
+  ReentrantReadWriteLock lock;  // 事务锁  /////////////////////////////////////////////////////////////
   private String databaseName;
   public String tableName;
   public ArrayList<Column> columns;     // 一张表的所有属性的元信息
+
   public BPlusTree<Entry, Row> index = new BPlusTree<>();   // b+树，索引用
   private int primaryIndex;  //columns中主键的下标
 
@@ -50,7 +51,7 @@ public class Table implements Iterable<Row> {
 
   private void recover() {
     // TODO
-    //通过反序列化得到的rows重新构建b+树
+    // 通过反序列化得到的rows重新构建b+树
     this.index = deserialize();
   }
   //检查输入的变量类型是否和columns给出的信息一致
@@ -65,9 +66,11 @@ public class Table implements Iterable<Row> {
     serialize();
   }
 
+
   public void delete(List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
     // 暂时只操作一个
+
 
     String comparator = conditions.get(0).comparator;
     String left = conditions.get(0).left;
@@ -87,7 +90,7 @@ public class Table implements Iterable<Row> {
             {
               case INT:
                 r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
+                iterator = index.iterator();    // iterator()：匹配迭代器
                 while (iterator.hasNext())
                 {
                   Pair<Entry, Row> pair = iterator.next();
@@ -557,6 +560,7 @@ public class Table implements Iterable<Row> {
         break;
     }
   }
+
 
   public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
@@ -1176,6 +1180,7 @@ public class Table implements Iterable<Row> {
     }
 
   }
+
   //根据网上的教程序列化和反序列化需要implement Serializable接口最后测试的时候可能table类要加上
   //这里应该改成public，在Database类中去调用
   //否则就是每执行一次上面的函数就要调用一次更新文件

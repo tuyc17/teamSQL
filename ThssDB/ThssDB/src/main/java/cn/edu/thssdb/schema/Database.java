@@ -10,12 +10,19 @@ import javafx.util.Pair;
 
 import java.io.*;
 import java.util.*;
+
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import cn.edu.thssdb.utils.Global;
 
 public class Database {
 
   private String name;
   private HashMap<String, Table> tables;
+  // ReentrantReadWriteLock:
+  // 可重入（每次加锁count+1）
+  // 读写分离：写数据和读数据分开，加上两把不同的锁
+  // 锁降级：线程获取写入锁后可以获取读取锁，然后释放写入锁，实现写锁->读锁
+  // 有效避免锁升级：不会出现读锁->写锁
   ReentrantReadWriteLock lock;
 
   public Database(String name) {
