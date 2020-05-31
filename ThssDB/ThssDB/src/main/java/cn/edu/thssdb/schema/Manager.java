@@ -11,8 +11,9 @@ import cn.edu.thssdb.utils.Global;
 public class Manager {
   private HashMap<String, Database> databases;
   private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
   //工作状态的数据库
-  private Database workingDb;
+  public Database workingDb;
 
   public static Manager getInstance() {
     return Manager.ManagerHolder.INSTANCE;
@@ -40,7 +41,6 @@ public class Manager {
     //初始化的时候指定一个初始db作为工作db
     //暂定为default
     workingDb = databases.get("default");
-
   }
 
   public Database getWorkingDb() {

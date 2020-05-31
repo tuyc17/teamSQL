@@ -157,9 +157,6 @@ public class Database {
     }
     else
     {
-      Table table = new Table(this.name, tableName, columns);
-      tables.put(tableName, table);
-
       try
       {
         // 向数据库的文件中增加表的名字
@@ -167,9 +164,8 @@ public class Database {
         FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         bufferedWriter.write(tableName+"\n");
+        bufferedWriter.flush();
         bufferedWriter.close();
-        fileWriter.close();
-
 
         //创建表的元数据和实际数据
         File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
@@ -177,13 +173,11 @@ public class Database {
         fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
         bufferedWriter = new BufferedWriter(fileWriter);
         for (Column c: columns) {
-          System.out.println(c.toString());
           bufferedWriter.write(c.toString()+"\n");
         }
         //先关buffer
+        bufferedWriter.flush();
         bufferedWriter.close();
-        fileWriter.close();
-
 
         file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
         file.createNewFile();
@@ -191,6 +185,10 @@ public class Database {
       catch (IOException e) {
         e.printStackTrace();
       }
+
+      Table table = new Table(this.name, tableName, columns);
+      tables.put(tableName, table);
+
     }
   }
 

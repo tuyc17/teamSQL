@@ -2,8 +2,10 @@ package cn.edu.thssdb.server;
 
 import cn.edu.thssdb.rpc.thrift.ExecuteStatementReq;
 import cn.edu.thssdb.rpc.thrift.IService;
+import cn.edu.thssdb.schema.Column;
 import cn.edu.thssdb.schema.Manager;
 import cn.edu.thssdb.service.IServiceHandler;
+import cn.edu.thssdb.type.ColumnType;
 import cn.edu.thssdb.utils.Global;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.TServer;
@@ -26,7 +28,7 @@ public class ThssDB {
     private static TServerSocket transport;
     private static TServer server;
     public List<Long> sessions = new ArrayList<>();
-    public Manager manager = new Manager();
+    private static Manager manager;
 
     public static ThssDB getInstance() {
         return ThssDBHolder.INSTANCE;
@@ -80,6 +82,13 @@ public class ThssDB {
             server = new TSimpleServer(new TServer.Args(transport).processor(processor));
             logger.info("Starting ThssDB ...");
             //新建manager
+            manager = Manager.getInstance();
+
+            Column a = new Column("test", ColumnType.INT, 1, true, 10);
+            ArrayList<Column> t = new ArrayList<>();
+            t.add(a);
+            Column[] columns = (Column[]) t.toArray(new Column[0]);
+            manager.workingDb.create("mytable", columns);
 
             //此处用于测试
 //            IServiceHandler t = new IServiceHandler();

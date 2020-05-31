@@ -37,8 +37,9 @@ public class Table implements Iterable<Row> {
         break;
       }
     }
-    recover();
+    //recover();
   }
+
   public List<String> GetColumnName(){
     List<String> ret = new ArrayList<>();
     for (int i=1;i<columns.size();i++){
