@@ -40,7 +40,7 @@ public class Table implements Iterable<Row> {
         break;
       }
     }
-//    recover();
+    recover();
   }
 
   public List<String> GetColumnName(){
@@ -81,14 +81,12 @@ public class Table implements Iterable<Row> {
 
   private void recover() {
     // TODO
-    try {
-      lock.writeLock().lock();
-      // 通过反序列化得到的rows重新构建b+树
-      this.index = deserialize();
-    } finally {
-      lock.writeLock().unlock();
+    ArrayList<Row> rows = deserialize();
+    for(Row r: rows)
+    {
+      ArrayList<Entry> entries = r.getEntries();
+      index.put(entries.get(primaryIndex), r);
     }
-
   }
   //检查输入的变量类型是否和columns给出的信息一致
   //这里看是直接传entry的数组好
@@ -620,6 +618,7 @@ public class Table implements Iterable<Row> {
         }
         break;
     }
+    serialize();
   }
 
   // tuyc's override
@@ -1254,7 +1253,7 @@ public class Table implements Iterable<Row> {
         }
         break;
     }
-
+    serialize();
   }
 
   // tuyc's override
@@ -1277,67 +1276,89 @@ public class Table implements Iterable<Row> {
   //否则就是每执行一次上面的函数就要调用一次更新文件
   private void serialize() {
     // TODO
-//    try
-//    {
-//      FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/rows/"+ tableName +".txt");
-//      BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-//
-//      BPlusTreeIterator<Entry, Row> iterator = index.iterator();
-//      while (iterator.hasNext())
-//      {
-//        Pair<Entry, Row> pair = iterator.next();
-//        ArrayList<Entry> entries = pair.getValue().getEntries();
-//        for(Entry e : entries)
-//        {
-//          bufferedWriter.write(e.toString()+",");
-//        }
-//        bufferedWriter.write("\n");
-//      }
-//
-//      bufferedWriter.flush();
-//      bufferedWriter.close();
-//
-//    }
-//    catch (IOException e) {
-//      e.printStackTrace();
-//    }
-
-
     try
     {
-      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(new File(Global.root+"/data/tables/rows/"+tableName+".txt")));
-      out.writeObject(this.index);
-      out.close();
+      FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/rows/"+ tableName +".txt");
+      BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+
+      BPlusTreeIterator<Entry, Row> iterator = index.iterator();
+      while (iterator.hasNext())
+      {
+        Pair<Entry, Row> pair = iterator.next();
+        ArrayList<Entry> entries = pair.getValue().getEntries();
+        for(int i=0; i< entries.size(); i++)
+        {
+          if(i == entries.size() - 1)
+          {
+            bufferedWriter.write(entries.get(i).toString());
+          }
+          else
+          {
+            bufferedWriter.write(entries.get(i).toString()+",");
+          }
+        }
+        bufferedWriter.write("\n");
+      }
+
+      bufferedWriter.flush();
+      bufferedWriter.close();
+
     }
-    catch (IOException e)
-    {
+    catch (IOException e) {
       e.printStackTrace();
     }
+
   }
   //假设能反序列化成B+树
   //不行就还是返回row的list然后重建B+树
-  private BPlusTree<Entry, Row> deserialize() {
+  private ArrayList<Row> deserialize() {
     // TODO
-    try {
-
-      File tempFile = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-      if (!tempFile.exists()){
-        boolean tempBool = tempFile.createNewFile();
-      }
-      if (tempFile.length()==0){
-        BPlusTree<Entry, Row> tree = new BPlusTree<Entry, Row>();
-        return tree;
-      }
-      ObjectInputStream in = new ObjectInputStream(new FileInputStream(tempFile));
-      BPlusTree<Entry, Row> tree = (BPlusTree<Entry, Row>)in.readObject();
-      in.close();
-      return tree;
-    }
-    catch (ClassNotFoundException | IOException e)
+    try
     {
+      FileReader fileReader = new FileReader(Global.root+"/data/tables/rows/"+ tableName +".txt");
+      BufferedReader bufferedReader = new BufferedReader(fileReader);
+      String line;
+      ArrayList<Row> rows = new ArrayList<>();
+      while ((line = bufferedReader.readLine()) != null)
+      {
+        String[] values = line.split(",");
+        ArrayList<Entry> entries = new ArrayList<>();
+        for (int i = 0; i < values.length ; i++)
+        {
+          ColumnType type = columns.get(i).getType();
+          Entry entry;
+          switch (type) {
+            case INT:
+              entry = new Entry(Integer.parseInt(values[i]));
+              entries.add(entry);
+              break;
+            case LONG:
+              entry = new Entry(Long.parseLong(values[i]));
+              entries.add(entry);
+              break;
+            case FLOAT:
+              entry = new Entry(Float.parseFloat(values[i]));
+              entries.add(entry);
+              break;
+            case DOUBLE:
+              entry = new Entry(Double.parseDouble(values[i]));
+              entries.add(entry);
+              break;
+            case STRING:
+              entry = new Entry(values[i]);
+              entries.add(entry);
+              break;
+          }
+        }
+        Row row = new Row(entries.toArray(new Entry[0]));
+        rows.add(row);
+      }
+      return rows;
+    }
+    catch (IOException e) {
       e.printStackTrace();
     }
-    return null;
+    return new ArrayList<>();
   }
 
 //  private ArrayList<Row> deserialize() throws IOException, ClassNotFoundException {

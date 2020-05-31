@@ -64,6 +64,7 @@ public class IServiceHandler implements IService.Iface {
     @Override
     public ExecuteStatementResp executeStatement(ExecuteStatementReq req) throws TException {
         Table tempTable,table;
+        boolean success;
         long session =req.sessionId;
         CharStream input = CharStreams.fromString(req.statement.toLowerCase());
         //转成小写以规避大小写问题
@@ -98,14 +99,30 @@ public class IServiceHandler implements IService.Iface {
             case "use_database":
                 //切换数据库
                 //已测试
-                server.manager.switchDatabase(t.database_name);
-                resp.getStatus().msg="切换数据库成功";
-                //异常状况:
+                success = server.manager.switchDatabase(t.database_name);
+                if (success){
+                    resp.status.code=Global.SUCCESS_CODE;
+                    resp.getStatus().msg="切换数据库成功";
+                }
+                else{
+                    resp.status.code=Global.FAILURE_CODE;
+                    resp.status.msg="该数据库不存在";
+                }
+
+                //异常状况:1.切换的数据库不存在
                 break;
             case "create_database":
                 //已测试
-                server.manager.createDatabaseIfNotExists(t.database_name);
-                resp.getStatus().msg="创建数据库成功";
+                success =server.manager.createDatabaseIfNotExists(t.database_name);
+                if (success){
+                    resp.status.code=Global.SUCCESS_CODE;
+                    resp.getStatus().msg="创建数据库成功";
+                }
+                else{
+                    resp.status.code=Global.FAILURE_CODE;
+                    resp.status.msg="创建数据库失败:已存在同名数据库";
+                }
+                //异常状况:1.试图创建的数据库已存在
                 break;
             case "drop_database":
                 //已测试

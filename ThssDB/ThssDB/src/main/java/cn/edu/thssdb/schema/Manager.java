@@ -62,12 +62,12 @@ public class Manager {
     }
   }
 
-  public static void createDatabaseIfNotExists(String name) {
+  public static boolean createDatabaseIfNotExists(String name) {
     // TODO
     if(databases.containsKey(name))
     {
       //应该要向客户端返回数据库已经存在
-      return;
+      return false;
     }
     else
     {
@@ -85,6 +85,7 @@ public class Manager {
       }
       Database db = new Database(name);
       databases.put(name, db);
+      return true;
     }
   }
 
@@ -124,10 +125,17 @@ public class Manager {
 
   }
 
-  public void switchDatabase(String name) {
+  public boolean switchDatabase(String name) {
     // TODO
-    workingDb.quit();
-    workingDb = databases.get(name);
+    Database temp = databases.get(name);
+    if (temp==null){
+      return false;
+    }
+    else{
+      workingDb.quit();
+      workingDb = databases.get(name);
+      return true;
+    }
   }
 
   private static class ManagerHolder {
