@@ -57,6 +57,8 @@ public class Client {
             protocol = new TBinaryProtocol(transport);
             client = new IService.Client(protocol);
             boolean open = true;
+            //不需要登录
+            sendconnect("123", "123123");
             while (true) {
                 print(Global.CLI_PREFIX);
                 String msg = SCANNER.nextLine();
@@ -65,11 +67,10 @@ public class Client {
                 switch (msglist[0]) {
                     case Global.CONNECT:
                         // 目前暂时没有密码校验
-                        if (msglist.length<3){
-                            sendconnect("msglist[1]","msglist[2]");
-                        }
-                        else{
-                            sendconnect(msglist[1],msglist[2]);
+                        if (msglist.length < 3) {
+                            sendconnect("msglist[1]", "msglist[2]");
+                        } else {
+                            sendconnect(msglist[1], msglist[2]);
                         }
                         break;
                     case Global.SHOW_TIME:
@@ -80,13 +81,12 @@ public class Client {
                         open = false;
                         break;
                     default:
-                      // 应该是服务端告诉客户端这个语句不通顺，客户端没有语法解析，应该是不知道的
-                      // 故default应该是语法执行，客户端等回信，而不是输出invalid statements
-                        if (session==-1){
+                        // 应该是服务端告诉客户端这个语句不通顺，客户端没有语法解析，应该是不知道的
+                        // 故default应该是语法执行，客户端等回信，而不是输出invalid statements
+                        if (session == -1) {
                             println("尚未连接！");
-                        }
-                        else{
-                            send_statment(session,msg.trim());
+                        } else {
+                            send_statment(session, msg.trim());
                         }
                         break;
                 }
@@ -110,37 +110,38 @@ public class Client {
             logger.error(e.getMessage());
         }
     }
-  private static void sendconnect(String username,String password) {
-    ConnectReq req = new ConnectReq(username,password);
-    try {
-        ConnectResp resp = client.connect(req);
-        Status temp = resp.getStatus();
-        //异常处理省略,理论上应该通过这个观察是否异常
-        session=resp.getSessionId();
-        System.out.println(session);
-    } catch (TException e) {
-      logger.error(e.getMessage());
+
+    private static void sendconnect(String username, String password) {
+        ConnectReq req = new ConnectReq(username, password);
+        try {
+            ConnectResp resp = client.connect(req);
+            Status temp = resp.getStatus();
+            //异常处理省略,理论上应该通过这个观察是否异常
+            session = resp.getSessionId();
+            System.out.println(session);
+        } catch (TException e) {
+            logger.error(e.getMessage());
+        }
     }
-  }
-    private static void send_statment(long sessionId,String statment) {
-        ExecuteStatementReq req = new ExecuteStatementReq(sessionId,statment);
+
+    private static void send_statment(long sessionId, String statment) {
+        ExecuteStatementReq req = new ExecuteStatementReq(sessionId, statment);
         try {
             ExecuteStatementResp resp = client.executeStatement(req);
             Status temp = resp.getStatus();
             //异常处理省略,理论上应该通过这个观察是否异常
             System.out.println("已收到语句回复");
-            if (temp.code==Global.SUCCESS_CODE){
+            if (temp.code == Global.SUCCESS_CODE) {
                 System.out.println("语句执行成功");
-            }
-            else if (temp.code==Global.FAILURE_CODE){
+            } else if (temp.code == Global.FAILURE_CODE) {
                 System.out.println("语句执行失败");
             }
             System.out.print("服务端消息:");
             System.out.println(temp.msg);
-            if (resp.columnsList!=null){
+            if (resp.columnsList != null) {
                 System.out.println(resp.columnsList.toString());
             }
-            if (resp.rowList!=null){
+            if (resp.rowList != null) {
                 System.out.println(resp.rowList.toString());
             }
             System.out.println("");

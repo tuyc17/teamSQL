@@ -112,14 +112,24 @@ public class IServiceHandler implements IService.Iface {
                 //已测试
                 //错误情况尚未处理(多主键相同)
                 table = db.getTables().get(t.table_name);
-                Entry[] temp_list = new Entry[Global.MAX_LEN];
+                Entry[] temp_list = new Entry[table.columns.size()];
                 //找每个名字对应的属性
-                for (int i=0;i<t.column_names.size();i++){
-                    //其中可以搞点异常处理
+                if (t.column_names.size()==0){
+                    // TODO：可空问题
                     for (int j=0;j<table.columns.size();j++){
-                        if (t.column_names.get(i).equals(table.columns.get(j).getName())){
-                            //第j个属性值应为第i个属性
-                            temp_list[j] = Database.GetEntry(table.columns.get(j).getType(),t.value_entrys.get(i));
+                        if (t.value_entrys.get(j)!=null){
+                            temp_list[j] = Database.GetEntry(table.columns.get(j).getType(),t.value_entrys.get(j));
+                        }
+                    }
+                }
+                else{
+                    for (int i=0;i<t.column_names.size();i++){
+                        //其中可以搞点异常处理
+                        for (int j=0;j<table.columns.size();j++){
+                            if (t.column_names.get(i).equals(table.columns.get(j).getName())){
+                                //第j个属性值应为第i个属性
+                                temp_list[j] = Database.GetEntry(table.columns.get(j).getType(),t.value_entrys.get(i));
+                            }
                         }
                     }
                 }
@@ -156,6 +166,8 @@ public class IServiceHandler implements IService.Iface {
                 resp.getStatus().msg="删除数据成功";
                 break;
             case "update":
+                //TODO
+                //主键更改问题
                 table = db.getTables().get(t.table_name);
                 table.update(t.expression,t.conditions);
                 //更新成功后，返回插入后的表情况

@@ -561,8 +561,8 @@ public class Table implements Iterable<Row> {
   public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
     // TODO
     String expression_op =expression.comparator;
-    String expression_r =expression.left;
-    String expression_l =expression.right;
+    String expression_l =expression.left;
+    String expression_r =expression.right;
 
     int updateIndex = 0;
     for (int i = 0; i < columns.size(); i++)
@@ -1002,7 +1002,7 @@ public class Table implements Iterable<Row> {
                   ArrayList<Entry> entries = pair.getValue().getEntries();
                   if(entries.get(i).compareTo(r) == 0 )
                   {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
+                    Entry[] new_entries = (Entry[]) entries.toArray(new Entry[0]);
                     new_entries[updateIndex] = new_entry;
                     Row new_row = new Row(new_entries);
                     index.update(pair.getKey(), new_row);
