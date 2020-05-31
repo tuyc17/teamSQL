@@ -23,6 +23,7 @@ public class QueryResult {
     return null;
   }
 
+  // generate query record
   public Row generateQueryRecord(Row row) {
     // TODO
     return null;

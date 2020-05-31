@@ -26,6 +26,7 @@ public class ThssDB {
     private static TServerSocket transport;
     private static TServer server;
     public List<Long> sessions = new ArrayList<>();
+    //
     private Manager manager;
 
     public static ThssDB getInstance() {
@@ -73,7 +74,7 @@ public class ThssDB {
         };
         new Thread(setup).start();
     }
-
+    // 实例化manager
     private static void setUp(IService.Processor processor) throws TException {
         try {
             transport = new TServerSocket(Global.DEFAULT_SERVER_PORT);
