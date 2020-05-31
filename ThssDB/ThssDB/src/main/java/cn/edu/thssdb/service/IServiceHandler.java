@@ -65,6 +65,7 @@ public class IServiceHandler implements IService.Iface {
     public ExecuteStatementResp executeStatement(ExecuteStatementReq req) throws TException {
         Table tempTable,table;
         boolean success;
+        int retCase;
         long session =req.sessionId;
         CharStream input = CharStreams.fromString(req.statement.toLowerCase());
         //转成小写以规避大小写问题
@@ -126,13 +127,38 @@ public class IServiceHandler implements IService.Iface {
                 break;
             case "drop_database":
                 //已测试
-                server.manager.deleteDatabase(t.database_name);
-                resp.getStatus().msg="删除数据库成功";
+                retCase =server.manager.deleteDatabase(t.database_name);
+                switch (retCase){
+                    case 0:
+                        resp.status.code=Global.SUCCESS_CODE;
+                        resp.getStatus().msg="删除数据库成功";
+                        break;
+                    case 1:
+                        resp.status.code=Global.FAILURE_CODE;
+                        resp.getStatus().msg="删除数据库失败:数据库不存在";
+                        break;
+                    case 2:
+                        resp.status.code=Global.FAILURE_CODE;
+                        resp.getStatus().msg="删除数据库失败:数据库非空";
+                        break;
+                    default:
+                        break;
+                }
+                //异常状况:1.数据库不存在
+                //        2.数据库非空
                 break;
             case "create_table":
                 //已测试
-                db.create(t.table.table_name,t.getColumns());
-                resp.getStatus().msg="创建数据表成功";
+                success = db.create(t.table.table_name,t.getColumns());
+                if (success){
+                    resp.status.code=Global.SUCCESS_CODE;
+                    resp.getStatus().msg="创建表成功";
+                }
+                else{
+                    resp.status.code=Global.FAILURE_CODE;
+                    resp.status.msg="创建表失败:已存在同名表";
+                }
+                //异常状况:1.试图创建的表已存在
                 break;
             case "insert":
                 //已测试
@@ -163,13 +189,19 @@ public class IServiceHandler implements IService.Iface {
                 for (int i=0;i<table.columns.size();i++){
                     if (temp_list[i]==null &&  table.columns.get(i).isNotNull()){
                         //不可空可空，报错
-                        System.out.println("不可空被置为空");
                         resp.getStatus().msg="插入数据失败,原因:不可空数据缺失";
                         resp.getStatus().code=Global.FAILURE_CODE;
                         break;
                     }
                 }
+                try {
                 table.insert(temp_list);
+                }
+                catch (cn.edu.thssdb.exception.DuplicateKeyException e){
+                    resp.getStatus().msg="已存在相同的主键";
+                    resp.getStatus().code=Global.FAILURE_CODE;
+                    break;
+                }
                 //插入成功后，返回插入后的表情况
                 //将表信息输出给client
                 tempTable= db.getTables().get(t.table_name);

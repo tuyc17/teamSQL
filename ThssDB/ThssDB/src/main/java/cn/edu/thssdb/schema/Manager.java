@@ -89,8 +89,9 @@ public class Manager {
     }
   }
 
-  public static void deleteDatabase(String name) {
+  public static int deleteDatabase(String name) {
     // TODO
+    // 返回0：成功 1:数据库不存在 2:数据库非空
     if(databases.containsKey(name))
     {
       databases.remove(name);
@@ -99,6 +100,9 @@ public class Manager {
         //TODO
         //应该要保证数据库中没有表了才能删除
         File file = new File(Global.root+"/data/databases/"+name+".txt");
+        if (file.length()!=0){
+          return 2;
+        }
         file.delete();
 
         FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
@@ -112,6 +116,7 @@ public class Manager {
         }
         bufferedWriter.flush();
         bufferedWriter.close();
+        return 0;
 
       } catch (IOException e) {
         e.printStackTrace();
@@ -120,9 +125,9 @@ public class Manager {
     else
     {
       //向客户端返回没有这个数据库
-
+      return 1;
     }
-
+    return 3;
   }
 
   public boolean switchDatabase(String name) {

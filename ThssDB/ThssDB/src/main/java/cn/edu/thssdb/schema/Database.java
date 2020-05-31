@@ -226,13 +226,13 @@ public class Database {
     }
   }
 
-  public void create(String tableName, Column[] columns) {
+  public boolean create(String tableName, Column[] columns) {
     // TODO
     try {
       this.lock.writeLock().lock();
       if(tables.containsKey(tableName)) {
         //告知客户端表存在
-        return;
+        return false;
       }
       else {
         try {
@@ -271,6 +271,7 @@ public class Database {
     } finally {
       this.lock.writeLock().unlock();
     }
+    return true;
   }
 
   public void drop(String tableName) {
