@@ -109,6 +109,8 @@ public class IServiceHandler implements IService.Iface {
                 resp.getStatus().msg="创建数据表成功";
                 break;
             case "insert":
+                //已测试
+                //错误情况尚未处理(多主键相同)
                 table = db.getTables().get(t.table_name);
                 Entry[] temp_list = new Entry[Global.MAX_LEN];
                 //找每个名字对应的属性

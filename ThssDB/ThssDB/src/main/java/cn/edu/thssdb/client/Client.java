@@ -141,7 +141,7 @@ public class Client {
                 System.out.println(resp.columnsList.toString());
             }
             if (resp.rowList!=null){
-                System.out.println(resp.columnsList.toString());
+                System.out.println(resp.rowList.toString());
             }
             System.out.println("");
         } catch (TException e) {

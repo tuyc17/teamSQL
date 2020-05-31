@@ -42,7 +42,7 @@ public class Table implements Iterable<Row> {
 
   public List<String> GetColumnName(){
     List<String> ret = new ArrayList<>();
-    for (int i=1;i<columns.size();i++){
+    for (int i=0;i<columns.size();i++){
       ret.add(columns.get(i).getName());
     }
     return ret;

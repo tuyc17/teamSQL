@@ -56,6 +56,10 @@ public class Database {
       ArrayList<Entry> entries = pair.getValue().getEntries();
       List<String> temp_list = new ArrayList<>();
       for (int i=0;i<entries.size();i++){
+        String str = String.valueOf(entries.get(i));
+        if (str.equals("null")){
+          break;
+        }
         temp_list.add(String.valueOf(entries.get(i)));
       }
       ret.add(temp_list);
