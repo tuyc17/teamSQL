@@ -24,7 +24,8 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
         FullColumn temp2 = new FullColumn();
         if (k.length == 0) {
             //这种情况是*不考虑
-
+            // TODO:处理*
+            boolean avoidwarning =true;
         } else if (k.length == 1) {
 
             temp2.tableName = "NULL";
@@ -38,6 +39,8 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
         String[] k2 = str2.split("\\.");
         FullColumn temp3 = new FullColumn();
         if (k2.length == 0) {
+            // TODO:处理*
+            boolean avoidwarning =true;
             //这种情况是*不考虑
         } else if (k2.length == 1) {
 
@@ -190,6 +193,8 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
             String temp = ctx.result_column(i).getText();
             String[] k = temp.split("\\.");
             if (k.length == 0) {
+                // TODO:处理*
+                boolean avoidwarning =true;
                 //这种情况是*不考虑
             } else if (k.length == 1) {
                 FullColumn temp2 = new FullColumn();

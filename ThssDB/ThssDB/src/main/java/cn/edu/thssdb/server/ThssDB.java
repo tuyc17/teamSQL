@@ -1,6 +1,5 @@
 package cn.edu.thssdb.server;
 
-import cn.edu.thssdb.rpc.thrift.ExecuteStatementReq;
 import cn.edu.thssdb.rpc.thrift.IService;
 import cn.edu.thssdb.schema.Column;
 import cn.edu.thssdb.schema.Manager;
@@ -23,10 +22,7 @@ public class ThssDB {
 
     private static final Logger logger = LoggerFactory.getLogger(ThssDB.class);
 
-    private static IServiceHandler handler;
     private static IService.Processor processor;
-    private static TServerSocket transport;
-    private static TServer server;
     public List<Long> sessions = new ArrayList<>();
 
     public static Manager manager;
@@ -36,27 +32,28 @@ public class ThssDB {
     }
     public long new_session(){
         Random r = new Random();
-        long temp;
-        while(true){
+        long temp = 0;
+        boolean temp_bool=true;
+        while(temp_bool){
             temp = r.nextLong();
-            for (int i = 0;i<sessions.size();i++){
-                if (temp==sessions.get(i)){
-                    continue;
+            temp_bool=true;
+            for (Long session : sessions) {
+                if (temp == session) {
+                    temp_bool = false;
+                    break;
                 }
             }
-            break;
         }
         sessions.add(temp);
         return temp;
     }
-    public boolean remove_session(long session){
+    public void remove_session(long session){
         for (int i = 0;i<sessions.size();i++){
             if (session==sessions.get(i)){
                 sessions.remove(i);
-                return true;
+                return;
             }
         }
-        return false;
     }
     public static void main(String[] args) {
         ThssDB server = ThssDB.getInstance();
@@ -64,7 +61,7 @@ public class ThssDB {
     }
 
     private void start() {
-        handler = new IServiceHandler();
+        IServiceHandler handler = new IServiceHandler();
         handler.server=this;
         processor = new IService.Processor(handler);
         Runnable setup = () -> {
@@ -79,16 +76,16 @@ public class ThssDB {
     // 实例化manager
     private static void setUp(IService.Processor processor) throws TException {
         try {
-            transport = new TServerSocket(Global.DEFAULT_SERVER_PORT);
-            server = new TSimpleServer(new TServer.Args(transport).processor(processor));
+            TServerSocket transport = new TServerSocket(Global.DEFAULT_SERVER_PORT);
+            TServer server = new TSimpleServer(new TServer.Args(transport).processor(processor));
             logger.info("Starting ThssDB ...");
             //新建manager
             manager = Manager.getInstance();
 
-            Column a = new Column("test", ColumnType.INT, 1, true, 10);
-            ArrayList<Column> t = new ArrayList<>();
-            t.add(a);
-            Column[] columns = (Column[]) t.toArray(new Column[0]);
+//            Column a = new Column("test", ColumnType.INT, 1, true, 10);
+//            ArrayList<Column> t = new ArrayList<>();
+//            t.add(a);
+//            Column[] columns = (Column[]) t.toArray(new Column[0]);
 
             //此处用于测试
 //            IServiceHandler t = new IServiceHandler();
@@ -117,7 +114,6 @@ public class ThssDB {
         private static final ThssDB INSTANCE = new ThssDB();
 
         private ThssDBHolder() {
-            ;
 
         }
     }

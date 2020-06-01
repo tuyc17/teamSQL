@@ -5,6 +5,7 @@ import cn.edu.thssdb.parser.statement_data;
 import cn.edu.thssdb.rpc.thrift.*;
 import cn.edu.thssdb.schema.Database;
 import cn.edu.thssdb.schema.Entry;
+import cn.edu.thssdb.schema.Manager;
 import cn.edu.thssdb.schema.Table;
 import cn.edu.thssdb.utils.Global;
 import org.apache.thrift.TException;
@@ -15,20 +16,16 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import cn.edu.thssdb.parser.SQLLexer;
 import java.util.Date;
 import java.io.ByteArrayOutputStream;
-import java.io.FilterOutputStream;
 import java.io.PrintStream;
-import java.util.List;
-import java.util.concurrent.locks.Condition;
 
 import cn.edu.thssdb.parser.mySQLvisitor;
 import cn.edu.thssdb.server.ThssDB;
-import cn.edu.thssdb.schema.Manager;
 
 public class IServiceHandler implements IService.Iface {
     public ThssDB server;
 
     @Override
-    public GetTimeResp getTime(GetTimeReq req) throws TException {
+    public GetTimeResp getTime(GetTimeReq req) {
         GetTimeResp resp = new GetTimeResp();
         resp.setTime(new Date().toString());
         resp.setStatus(new Status(Global.SUCCESS_CODE));
@@ -36,7 +33,7 @@ public class IServiceHandler implements IService.Iface {
     }
 
     @Override
-    public ConnectResp connect(ConnectReq req) throws TException {
+    public ConnectResp connect(ConnectReq req) {
 
         // TODO
         long sessionId=server.new_session();
@@ -52,7 +49,7 @@ public class IServiceHandler implements IService.Iface {
     }
 
     @Override
-    public DisconnectResp disconnect(DisconnectReq req) throws TException {
+    public DisconnectResp disconnect(DisconnectReq req) {
         // TODO
         DisconnectResp resp = new DisconnectResp();
         server.remove_session(req.sessionId);
@@ -62,7 +59,7 @@ public class IServiceHandler implements IService.Iface {
     }
 
     @Override
-    public ExecuteStatementResp executeStatement(ExecuteStatementReq req) throws TException {
+    public ExecuteStatementResp executeStatement(ExecuteStatementReq req) {
         Table tempTable,table;
         boolean success;
         int retCase;
@@ -95,12 +92,12 @@ public class IServiceHandler implements IService.Iface {
         // TODO 处理数据库
         // 忽略异常处理
 
-        Database db = server.manager.getWorkingDb();
+        Database db = ThssDB.manager.getWorkingDb();
         switch (t.kind){
             case "use_database":
                 //切换数据库
                 //已测试
-                success = server.manager.switchDatabase(t.database_name);
+                success = ThssDB.manager.switchDatabase(t.database_name);
                 if (success){
                     resp.status.code=Global.SUCCESS_CODE;
                     resp.getStatus().msg="切换数据库成功";
@@ -114,7 +111,7 @@ public class IServiceHandler implements IService.Iface {
                 break;
             case "create_database":
                 //已测试
-                success =server.manager.createDatabaseIfNotExists(t.database_name);
+                success = Manager.createDatabaseIfNotExists(t.database_name);
                 if (success){
                     resp.status.code=Global.SUCCESS_CODE;
                     resp.getStatus().msg="创建数据库成功";
@@ -127,7 +124,7 @@ public class IServiceHandler implements IService.Iface {
                 break;
             case "drop_database":
                 //已测试
-                retCase =server.manager.deleteDatabase(t.database_name);
+                retCase = Manager.deleteDatabase(t.database_name);
                 switch (retCase){
                     case 0:
                         resp.status.code=Global.SUCCESS_CODE;

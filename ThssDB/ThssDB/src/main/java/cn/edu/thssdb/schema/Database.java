@@ -56,18 +56,15 @@ public class Database {
   //B+树转list<list<String>>
   public static List<List<String>> BTreeParseLLS(BPlusTree<Entry, Row> index){
     List<List<String>> ret= new ArrayList<>();
-    BPlusTreeIterator<Entry, Row> iterator=index.iterator();
-    while (iterator.hasNext())
-    {
-      Pair<Entry, Row> pair = iterator.next();
+    for (Pair<Entry, Row> pair : index) {
       ArrayList<Entry> entries = pair.getValue().getEntries();
       List<String> temp_list = new ArrayList<>();
-      for (int i=0;i<entries.size();i++){
-        String str = String.valueOf(entries.get(i));
-        if (str.equals("null")){
+      for (Entry entry : entries) {
+        String str = String.valueOf(entry);
+        if (str.equals("null")) {
           break;
         }
-        temp_list.add(String.valueOf(entries.get(i)));
+        temp_list.add(String.valueOf(entry));
       }
       ret.add(temp_list);
     }
@@ -246,7 +243,7 @@ public class Database {
 
           //创建表的元数据和实际数据
           File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
-          file.createNewFile();
+          boolean test = file.createNewFile();
           fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
           bufferedWriter = new BufferedWriter(fileWriter);
           for (Column c: columns) {
@@ -258,7 +255,7 @@ public class Database {
           bufferedWriter.close();
 
           file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-          file.createNewFile();
+          boolean test2 =file.createNewFile();
         }
         catch (IOException e) {
           e.printStackTrace();
@@ -274,7 +271,7 @@ public class Database {
     return true;
   }
 
-  public void drop(String tableName) {
+  public boolean drop(String tableName) {
     // TODO
     try {
       this.lock.writeLock().lock();
@@ -286,25 +283,25 @@ public class Database {
           BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
           bufferedWriter.write("");
           Set<String> keys = tables.keySet();
-          Iterator<String> iterator = keys.iterator();
-          while (iterator.hasNext()) {
-            String key = iterator.next();
-            bufferedWriter.write(key+"\n");
+          for (String key : keys) {
+            bufferedWriter.write(key + "\n");
           }
           fileWriter.close();
           bufferedWriter.close();
           //删除表对应的文件
           File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
-          file.delete();
+          boolean test =file.delete();
           file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-          file.delete();
+          boolean test2 =file.delete();
         }
         catch (IOException e) {
           e.printStackTrace();
         }
+        return true;
       }
       else {
         //告诉客户端表不存在
+        return false;
       }
     } finally {
       this.lock.writeLock().unlock();
@@ -365,7 +362,7 @@ public class Database {
         }
         bufferedReader1.close();
         fileReader1.close();
-        Table table = new Table(name, line, (Column[])columnArrayList.toArray(new Column[0]));
+        Table table = new Table(name, line, columnArrayList.toArray(new Column[0]));
         tables.put(line, table);
       }
       fileReader.close();
