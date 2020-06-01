@@ -64,6 +64,7 @@ public class IServiceHandler implements IService.Iface {
         int retCase;
         long session =req.sessionId;
         CharStream input = CharStreams.fromString(req.statement.toLowerCase());
+
         //转成小写以规避大小写问题
         SQLLexer lexer = new SQLLexer(input);
         //此处截取输出日志

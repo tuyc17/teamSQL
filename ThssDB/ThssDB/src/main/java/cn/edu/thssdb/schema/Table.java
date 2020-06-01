@@ -9,6 +9,7 @@ import cn.edu.thssdb.schema.Column;
 import javafx.scene.control.Tab;
 import javafx.util.Pair;
 import cn.edu.thssdb.utils.Global;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,1348 +19,1233 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Table implements Iterable<Row> {
-  ReentrantReadWriteLock lock;  // 事务锁
-  private String databaseName;
-  public String tableName;
-  public ArrayList<Column> columns;     // 一张表的所有属性的元信息
+    ReentrantReadWriteLock lock;  // 事务锁
+    private String databaseName;
+    public String tableName;
+    public ArrayList<Column> columns;     // 一张表的所有属性的元信息
 
-  public BPlusTree<Entry, Row> index = new BPlusTree<>();   // b+树，索引用
-  private int primaryIndex;  //columns中主键的下标
+    public BPlusTree<Entry, Row> index = new BPlusTree<>();   // b+树，索引用
+    private int primaryIndex;  //columns中主键的下标
 
-  // 基本构造函数
-  public Table(String databaseName, String tableName, Column[] columns)
-  {
-    // TODO
-    this.databaseName = databaseName;
-    this.tableName = tableName;
-    this.columns = new ArrayList<Column>(Arrays.asList(columns));
-    for (int i = 0; i < this.columns.size(); i++) {
-      if(this.columns.get(i).isPrimary())
-      {
-        this.primaryIndex = i;
-        break;
+    // 基本构造函数
+    public Table(String databaseName, String tableName, Column[] columns) {
+        // TODO
+        this.databaseName = databaseName;
+        this.tableName = tableName;
+        this.columns = new ArrayList<Column>(Arrays.asList(columns));
+        for (int i = 0; i < this.columns.size(); i++) {
+            if (this.columns.get(i).isPrimary()) {
+                this.primaryIndex = i;
+                break;
+            }
+        }
+        recover();
+    }
+
+    public List<String> GetColumnName() {
+        List<String> ret = new ArrayList<>();
+        for (int i = 0; i < columns.size(); i++) {
+            ret.add(columns.get(i).getName());
+        }
+        return ret;
+    }
+
+    // tuyc:同Database.persist，反正你们不用，不如拿来我用（
+    boolean persist() {
+        try {
+            lock.writeLock().lock();
+            // 下面这个try-catch不太妙，是我自己实现的serialize，恐怕要出问题
+            try {
+                File dir = new File("data" + File.separator + databaseName + File.separator + "data");
+                if (!dir.exists() && !dir.mkdirs()) {
+                    System.err.print("Fail to serialize due to mkdirs error!");
+                    return false;
+                }
+                ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(dir.toString() + File.separator + tableName));
+                for (Row row : this) {
+                    oos.writeObject(row);
+                }
+                oos.close();
+                return true;
+            } catch (IOException e) {
+                System.err.print("Fail to serialize due to IOException!");
+                return false;
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private void recover() {
+        // TODO
+        ArrayList<Row> rows = deserialize();
+        for (Row r : rows) {
+            ArrayList<Entry> entries = r.getEntries();
+            index.put(entries.get(primaryIndex), r);
+        }
+    }
+
+    //检查输入的变量类型是否和columns给出的信息一致
+    //这里看是直接传entry的数组好
+    //还是看发到这里再转化成entry的list
+    //entries 还需要变成对应的类型再保存
+    public void insert(Entry[] entries) {
+        // TODO
+        Row row = new Row(entries);
+        index.put(entries[primaryIndex], row);
+
+        serialize();
+    }
+
+    // tuyc's functional functions
+    boolean checkRowExist(Entry primary) {
+        try {
+            lock.readLock().lock();
+            return index.contains(primary);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    // tuyc's override
+    void insert(Row row) throws DuplicateKeyException {
+        // TODO
+        try {
+            lock.writeLock().lock();
+            Entry primary = row.getEntries().get(primaryIndex);
+            if (checkRowExist(primary)) {
+                throw new DuplicateKeyException();
+            }
+            index.put(primary, row);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public void iteratorModel(String left,String comparator ,String right, ColumnType t,String model) {
+        Entry r = Database.GetEntry(t, right);
+        for (int i = 0; i < columns.size(); i++) {
+            if (columns.get(i).isSame(left)) {
+              // iterator()：匹配迭代器
+              for (Pair<Entry, Row> pair : index) {
+                ArrayList<Entry> entries = pair.getValue().getEntries();
+                if (isSatisfied(comparator, entries.get(i), r)) {
+                  switch (model) {
+                    case "delete":
+                      delete_unit(pair);
+                      break;
+                    case "update":
+                      update_unit(pair, t, left, right);
+                      break;
+                    default:
+                      System.out.println("错误:iteratorModel接受了不合法的model");
+                      break;
+                  }
+                }
+              }
+            }
+        }
+    }
+
+    public void delete_unit(Pair<Entry, Row> pair) {
+        index.remove(pair.getKey());
+    }
+    public void update_unit(Pair<Entry, Row> pair,ColumnType t,String left,String right) {
+      int updateIndex = 0;
+      for (int i = 0; i < columns.size(); i++) {
+        if (columns.get(i).isSame(left)) {
+          updateIndex = i;
+          break;
+        }
       }
+      ArrayList<Entry> entries = pair.getValue().getEntries();
+      Entry[] new_entries = (Entry[]) entries.toArray();
+      new_entries[updateIndex] = Database.GetEntry(t,right);
+      Row new_row = new Row(new_entries);
+      index.update(pair.getKey(), new_row);
     }
-    recover();
-  }
 
-  public List<String> GetColumnName(){
-    List<String> ret = new ArrayList<>();
-    for (int i=0;i<columns.size();i++){
-      ret.add(columns.get(i).getName());
-    }
-    return ret;
-  }
-
-  // tuyc:同Database.persist，反正你们不用，不如拿来我用（
-  boolean persist() {
-    try {
-      lock.writeLock().lock();
-      // 下面这个try-catch不太妙，是我自己实现的serialize，恐怕要出问题
-      try {
-        File dir = new File("data" + File.separator + databaseName + File.separator + "data");
-        if (!dir.exists() && !dir.mkdirs()) {
-          System.err.print("Fail to serialize due to mkdirs error!");
-          return false;
+    public boolean isSatisfied(String comparator,Entry temp,Entry r){
+        switch (comparator){
+          case ">":
+            return temp.compareTo(r) >0;
+          case "<":
+            return temp.compareTo(r) <0;
+          case ">=":
+            return temp.compareTo(r) >=0;
+          case "<=":
+            return temp.compareTo(r) <=0;
+          case "=":
+            return temp.compareTo(r) ==0;
+          default:
+            System.out.println("解析错误！");
+            return false;
         }
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(dir.toString()+File.separator+tableName));
-        for (Row row : this) {
-          oos.writeObject(row);
+    }
+
+
+    public void delete(List<cn.edu.thssdb.parser.Condition> conditions) {
+        // TODO
+        // 暂时只操作一个
+
+
+        String comparator = conditions.get(0).comparator;
+        String left = conditions.get(0).left;
+        String right = conditions.get(0).right;
+
+
+        switch (comparator) {
+            case ">":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();    // iterator()：匹配迭代器
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "<":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "<=":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case ">=":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "=":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "<>":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        index.remove(pair.getKey());
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
         }
-        oos.close();
-        return true;
-      }
-      catch (IOException e) {
-        System.err.print("Fail to serialize due to IOException!");
-        return false;
-      }
+        serialize();
     }
-    finally {
-      lock.writeLock().unlock();
+
+    // tuyc's override
+    void delete(Row row) {
+        // TODO
+        try {
+            lock.writeLock().lock();
+            Entry primary = row.getEntries().get(primaryIndex);
+            if (!checkRowExist(primary)) {
+                throw new KeyNotExistException();
+            }
+            index.remove(primary);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
-  }
 
-  private void recover() {
-    // TODO
-    ArrayList<Row> rows = deserialize();
-    for(Row r: rows)
-    {
-      ArrayList<Entry> entries = r.getEntries();
-      index.put(entries.get(primaryIndex), r);
-    }
-  }
-  //检查输入的变量类型是否和columns给出的信息一致
-  //这里看是直接传entry的数组好
-  //还是看发到这里再转化成entry的list
-  //entries 还需要变成对应的类型再保存
-  public void insert(Entry[] entries) {
-    // TODO
-    Row row = new Row(entries);
-    index.put(entries[primaryIndex], row);
+    public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
+        // TODO
+        String expression_op = expression.comparator;
+        String expression_l = expression.left;
+        String expression_r = expression.right;
 
-    serialize();
-  }
-
-  // tuyc's functional functions
-  boolean checkRowExist(Entry primary) {
-    try {
-      lock.readLock().lock();
-      return index.contains(primary);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  // tuyc's override
-  void insert(Row row) throws DuplicateKeyException {
-    // TODO
-    try {
-      lock.writeLock().lock();
-      Entry primary = row.getEntries().get(primaryIndex);
-      if (checkRowExist(primary)) {
-        throw new DuplicateKeyException();
-      }
-      index.put(primary, row);
-    }
-    finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  public void delete(List<cn.edu.thssdb.parser.Condition> conditions) {
-    // TODO
-    // 暂时只操作一个
-
-
-    String comparator = conditions.get(0).comparator;
-    String left = conditions.get(0).left;
-    String right = conditions.get(0).right;
-
-    switch (comparator)
-    {
-      case ">":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();    // iterator()：匹配迭代器
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
+        int updateIndex = 0;
+        for (int i = 0; i < columns.size(); i++) {
+            if (columns.get(i).isSame(expression_l)) {
+                updateIndex = i;
                 break;
             }
-            break;
-          }
         }
-        break;
-      case "<":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "<=":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case ">=":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "=":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "<>":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    index.remove(pair.getKey());
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-    }
-    serialize();
-  }
 
-  // tuyc's override
-  void delete(Row row) {
-    // TODO
-    try {
-      lock.writeLock().lock();
-      Entry primary = row.getEntries().get(primaryIndex);
-      if (!checkRowExist(primary)) {
-        throw new KeyNotExistException();
-      }
-      index.remove(primary);
-    }
-    finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  public void update(cn.edu.thssdb.parser.Condition expression, List<cn.edu.thssdb.parser.Condition> conditions) {
-    // TODO
-    String expression_op =expression.comparator;
-    String expression_l =expression.left;
-    String expression_r =expression.right;
-
-    int updateIndex = 0;
-    for (int i = 0; i < columns.size(); i++)
-    {
-      if(columns.get(i).isSame(expression_l))
-      {
-        updateIndex = i;
-        break;
-      }
-    }
-
-    Entry new_entry = null;
-    ColumnType columnType = columns.get(updateIndex).getType();
-    switch (columnType)
-    {
-      case INT:
-        new_entry = new Entry(Integer.parseInt(expression_r));
-        break;
-      case LONG:
-        new_entry = new Entry(Long.parseLong(expression_r));
-        break;
-      case FLOAT:
-        new_entry = new Entry(Float.parseFloat(expression_r));
-        break;
-      case DOUBLE:
-        new_entry = new Entry(Double.parseDouble(expression_r));
-        break;
-      case STRING:
-        new_entry = new Entry(expression_r);
-        break;
-    }
-
-    // 暂时只操作一个
-
-    String comparator = conditions.get(0).comparator;
-    String left = conditions.get(0).left;
-    String right = conditions.get(0).right;
-
-    switch (comparator)
-    {
-      case ">":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) > 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "<":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) < 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "<=":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) <= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case ">=":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) >= 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "=":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray(new Entry[0]);
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) == 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-      case "<>":
-        for(int i = 0; i < columns.size(); i++)
-        {
-          if(columns.get(i).isSame(left))
-          {
-            ColumnType t = columns.get(i).getType();
-            Entry r;
-            BPlusTreeIterator<Entry, Row> iterator;
-            switch (t)
-            {
-              case INT:
-                r = new Entry(Integer.parseInt(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case LONG:
-                r = new Entry(Long.parseLong(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case FLOAT:
-                r = new Entry(Float.parseFloat(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case DOUBLE:
-                r = new Entry(Double.parseDouble(right));
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-              case STRING:
-                r = new Entry(right);
-                iterator = index.iterator();
-                while (iterator.hasNext())
-                {
-                  Pair<Entry, Row> pair = iterator.next();
-                  ArrayList<Entry> entries = pair.getValue().getEntries();
-                  if(entries.get(i).compareTo(r) != 0 )
-                  {
-                    Entry[] new_entries = (Entry[]) entries.toArray();
-                    new_entries[updateIndex] = new_entry;
-                    Row new_row = new Row(new_entries);
-                    index.update(pair.getKey(), new_row);
-                  }
-                }
-                break;
-            }
-            break;
-          }
-        }
-        break;
-    }
-    serialize();
-  }
-
-  // tuyc's override
-  void update(Row row) {
-    // TODO
-    try {
-      lock.writeLock().lock();
-      Entry entry = row.getEntries().get(primaryIndex);
-      if (!index.contains(entry))
-        throw new KeyNotExistException();
-      index.update(entry, row);
-    }
-    finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  //根据网上的教程序列化和反序列化需要implement Serializable接口最后测试的时候可能table类要加上
-  //这里应该改成public，在Database类中去调用
-  //否则就是每执行一次上面的函数就要调用一次更新文件
-  private void serialize() {
-    // TODO
-    try
-    {
-      FileWriter fileWriter = new FileWriter(Global.root+"/data/tables/rows/"+ tableName +".txt");
-      BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-
-      BPlusTreeIterator<Entry, Row> iterator = index.iterator();
-      while (iterator.hasNext())
-      {
-        Pair<Entry, Row> pair = iterator.next();
-        ArrayList<Entry> entries = pair.getValue().getEntries();
-        for(int i=0; i< entries.size(); i++)
-        {
-          if(i == entries.size() - 1)
-          {
-            bufferedWriter.write(entries.get(i).toString());
-          }
-          else
-          {
-            bufferedWriter.write(entries.get(i).toString()+",");
-          }
-        }
-        bufferedWriter.write("\n");
-      }
-
-      bufferedWriter.flush();
-      bufferedWriter.close();
-
-    }
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-
-  }
-  //假设能反序列化成B+树
-  //不行就还是返回row的list然后重建B+树
-  private ArrayList<Row> deserialize() {
-    // TODO
-    try
-    {
-      FileReader fileReader = new FileReader(Global.root+"/data/tables/rows/"+ tableName +".txt");
-      BufferedReader bufferedReader = new BufferedReader(fileReader);
-      String line;
-      ArrayList<Row> rows = new ArrayList<>();
-      while ((line = bufferedReader.readLine()) != null)
-      {
-        String[] values = line.split(",");
-        ArrayList<Entry> entries = new ArrayList<>();
-        for (int i = 0; i < values.length ; i++)
-        {
-          ColumnType type = columns.get(i).getType();
-          Entry entry;
-          switch (type) {
+        Entry new_entry = null;
+        ColumnType columnType = columns.get(updateIndex).getType();
+        switch (columnType) {
             case INT:
-              entry = new Entry(Integer.parseInt(values[i]));
-              entries.add(entry);
-              break;
+                new_entry = new Entry(Integer.parseInt(expression_r));
+                break;
             case LONG:
-              entry = new Entry(Long.parseLong(values[i]));
-              entries.add(entry);
-              break;
+                new_entry = new Entry(Long.parseLong(expression_r));
+                break;
             case FLOAT:
-              entry = new Entry(Float.parseFloat(values[i]));
-              entries.add(entry);
-              break;
+                new_entry = new Entry(Float.parseFloat(expression_r));
+                break;
             case DOUBLE:
-              entry = new Entry(Double.parseDouble(values[i]));
-              entries.add(entry);
-              break;
+                new_entry = new Entry(Double.parseDouble(expression_r));
+                break;
             case STRING:
-              entry = new Entry(values[i]);
-              entries.add(entry);
-              break;
-          }
+                new_entry = new Entry(expression_r);
+                break;
         }
-        Row row = new Row(entries.toArray(new Entry[0]));
-        rows.add(row);
-      }
-      return rows;
+
+        // 暂时只操作一个
+
+        String comparator = conditions.get(0).comparator;
+        String left = conditions.get(0).left;
+        String right = conditions.get(0).right;
+
+        switch (comparator) {
+            case ">":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) > 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "<":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) < 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "<=":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) <= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case ">=":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) >= 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "=":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray(new Entry[0]);
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) == 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "<>":
+                for (int i = 0; i < columns.size(); i++) {
+                    if (columns.get(i).isSame(left)) {
+                        ColumnType t = columns.get(i).getType();
+                        Entry r;
+                        BPlusTreeIterator<Entry, Row> iterator;
+                        switch (t) {
+                            case INT:
+                                r = new Entry(Integer.parseInt(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case LONG:
+                                r = new Entry(Long.parseLong(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case FLOAT:
+                                r = new Entry(Float.parseFloat(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case DOUBLE:
+                                r = new Entry(Double.parseDouble(right));
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                            case STRING:
+                                r = new Entry(right);
+                                iterator = index.iterator();
+                                while (iterator.hasNext()) {
+                                    Pair<Entry, Row> pair = iterator.next();
+                                    ArrayList<Entry> entries = pair.getValue().getEntries();
+                                    if (entries.get(i).compareTo(r) != 0) {
+                                        Entry[] new_entries = (Entry[]) entries.toArray();
+                                        new_entries[updateIndex] = new_entry;
+                                        Row new_row = new Row(new_entries);
+                                        index.update(pair.getKey(), new_row);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                break;
+        }
+        serialize();
     }
-    catch (IOException e) {
-      e.printStackTrace();
+
+    // tuyc's override
+    void update(Row row) {
+        // TODO
+        try {
+            lock.writeLock().lock();
+            Entry entry = row.getEntries().get(primaryIndex);
+            if (!index.contains(entry))
+                throw new KeyNotExistException();
+            index.update(entry, row);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
-    return new ArrayList<>();
-  }
+
+    //根据网上的教程序列化和反序列化需要implement Serializable接口最后测试的时候可能table类要加上
+    //这里应该改成public，在Database类中去调用
+    //否则就是每执行一次上面的函数就要调用一次更新文件
+    private void serialize() {
+        // TODO
+        try {
+            FileWriter fileWriter = new FileWriter(Global.root + "/data/tables/rows/" + tableName + ".txt");
+            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+
+            BPlusTreeIterator<Entry, Row> iterator = index.iterator();
+            while (iterator.hasNext()) {
+                Pair<Entry, Row> pair = iterator.next();
+                ArrayList<Entry> entries = pair.getValue().getEntries();
+                for (int i = 0; i < entries.size(); i++) {
+                    if (i == entries.size() - 1) {
+                        bufferedWriter.write(entries.get(i).toString());
+                    } else {
+                        bufferedWriter.write(entries.get(i).toString() + ",");
+                    }
+                }
+                bufferedWriter.write("\n");
+            }
+
+            bufferedWriter.flush();
+            bufferedWriter.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    //假设能反序列化成B+树
+    //不行就还是返回row的list然后重建B+树
+    private ArrayList<Row> deserialize() {
+        // TODO
+        try {
+            FileReader fileReader = new FileReader(Global.root + "/data/tables/rows/" + tableName + ".txt");
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+            String line;
+            ArrayList<Row> rows = new ArrayList<>();
+            while ((line = bufferedReader.readLine()) != null) {
+                String[] values = line.split(",");
+                ArrayList<Entry> entries = new ArrayList<>();
+                for (int i = 0; i < values.length; i++) {
+                    ColumnType type = columns.get(i).getType();
+                    Entry entry;
+                    switch (type) {
+                        case INT:
+                            entry = new Entry(Integer.parseInt(values[i]));
+                            entries.add(entry);
+                            break;
+                        case LONG:
+                            entry = new Entry(Long.parseLong(values[i]));
+                            entries.add(entry);
+                            break;
+                        case FLOAT:
+                            entry = new Entry(Float.parseFloat(values[i]));
+                            entries.add(entry);
+                            break;
+                        case DOUBLE:
+                            entry = new Entry(Double.parseDouble(values[i]));
+                            entries.add(entry);
+                            break;
+                        case STRING:
+                            entry = new Entry(values[i]);
+                            entries.add(entry);
+                            break;
+                    }
+                }
+                Row row = new Row(entries.toArray(new Entry[0]));
+                rows.add(row);
+            }
+            return rows;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
 
 //  private ArrayList<Row> deserialize() throws IOException, ClassNotFoundException {
 //    // TODO
@@ -1370,26 +1256,26 @@ public class Table implements Iterable<Row> {
 ////    return table.rows;
 //  }
 
-  private class TableIterator implements Iterator<Row> {
-    private Iterator<Pair<Entry, Row>> iterator;
+    private class TableIterator implements Iterator<Row> {
+        private Iterator<Pair<Entry, Row>> iterator;
 
-    TableIterator(Table table) {
-      this.iterator = table.index.iterator();
+        TableIterator(Table table) {
+            this.iterator = table.index.iterator();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public Row next() {
+            return iterator.next().getValue();
+        }
     }
 
     @Override
-    public boolean hasNext() {
-      return iterator.hasNext();
+    public Iterator<Row> iterator() {
+        return new TableIterator(this);
     }
-
-    @Override
-    public Row next() {
-      return iterator.next().getValue();
-    }
-  }
-
-  @Override
-  public Iterator<Row> iterator() {
-    return new TableIterator(this);
-  }
 }
