@@ -2,6 +2,7 @@ package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.index.BPlusTree;
 import cn.edu.thssdb.index.BPlusTreeIterator;
+import cn.edu.thssdb.parser.EqualExpression;
 import cn.edu.thssdb.query.QueryResult;
 import cn.edu.thssdb.query.QueryTable;
 import cn.edu.thssdb.type.ColumnType;
@@ -279,9 +280,8 @@ public class Database {
         tables.remove(tableName);
         try {
           //删除数据库文件中对应表的名字
-          FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt",true);
+          FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
           BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-          bufferedWriter.write("");
           Set<String> keys = tables.keySet();
           for (String key : keys) {
             bufferedWriter.write(key + "\n");
@@ -308,9 +308,28 @@ public class Database {
     }
   }
 
-  public String select(QueryTable[] queryTables) {
+  public String select(List<String> table_names, List<EqualExpression> equalExpressions) {
     // TODO
-    QueryResult queryResult = new QueryResult(queryTables);
+    //QueryResult queryResult = new QueryResult(queryTables);
+    for (String s: table_names) {
+      if(!tables.containsKey(s))
+      {
+        //有未知表出现告诉客户端
+        //TODO
+        return null;
+      }
+    }
+
+    if (table_names.size() == 1)
+    {
+      QueryTable qt = new QueryTable(tables.get(table_names.get(0)));
+
+    }
+    else
+    {
+      QueryTable qt = new QueryTable(tables.get(table_names.get(0)), tables.get(table_names.get(1)), equalExpressions);
+
+    }
 
     return null;
   }
