@@ -3,6 +3,7 @@ package cn.edu.thssdb.query;
 import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.parser.EqualExpression;
 import cn.edu.thssdb.parser.FullColumn;
+import cn.edu.thssdb.schema.Column;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.schema.Table;
@@ -13,6 +14,7 @@ import java.util.List;
 
 public class QueryTable implements Iterator<Row> {
   public ArrayList<Row> queryRows;
+  public ArrayList<String> attr;
   private Iterator<Row> it;
 
   public QueryTable(Table t) {
@@ -26,6 +28,11 @@ public class QueryTable implements Iterator<Row> {
     }
     queryRows = rows;
     it = queryRows.iterator();
+
+    for (Column c: t.columns) {
+      attr.add(c.getName());
+    }
+
   }
 
   public QueryTable(Table t1, Table t2, List<EqualExpression> equalExpressions) {
@@ -76,8 +83,44 @@ public class QueryTable implements Iterator<Row> {
 
     queryRows = rows;
     it = queryRows.iterator();
+
+    for(Column c2: t2.columns)
+    {
+      if(is_same(c2, t1.columns))
+      {
+        attr.add(t2.tableName+'.'+c2.getName());
+      }
+      else
+      {
+        attr.add(c2.getName());
+      }
+    }
+
+    for(Column c1: t1.columns)
+    {
+      if(is_same(c1, t2.columns))
+      {
+        attr.add(t1.tableName+'.'+c1.getName());
+      }
+      else
+      {
+        attr.add(c1.getName());
+      }
+    }
+
   }
 
+  private boolean is_same(Column c, ArrayList<Column> columns)
+  {
+    for(Column i : columns)
+    {
+      if(c.isSame(i.getName()))
+      {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @Override
   public boolean hasNext() {
