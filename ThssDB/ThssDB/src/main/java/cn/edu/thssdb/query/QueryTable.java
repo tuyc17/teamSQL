@@ -77,9 +77,8 @@ public class QueryTable implements Iterator<Row> {
         if(entries1.get(index1).compareTo(entries2.get(index2)) == 0)
         {
           table2_row.appendEntries(entries1);
+          rows.add(table2_row);
         }
-
-        rows.add(table2_row);
       }
       iterator2 = t2.iterator();
     }
