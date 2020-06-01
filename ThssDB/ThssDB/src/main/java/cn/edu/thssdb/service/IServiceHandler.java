@@ -1,7 +1,7 @@
 package cn.edu.thssdb.service;
 
-import cn.edu.thssdb.parser.SQLParser;
-import cn.edu.thssdb.parser.statement_data;
+import cn.edu.thssdb.parser.*;
+import cn.edu.thssdb.query.QueryResult;
 import cn.edu.thssdb.rpc.thrift.*;
 import cn.edu.thssdb.schema.Database;
 import cn.edu.thssdb.schema.Entry;
@@ -18,8 +18,8 @@ import cn.edu.thssdb.parser.SQLLexer;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
-import cn.edu.thssdb.parser.mySQLvisitor;
 import cn.edu.thssdb.server.ThssDB;
 
 public class IServiceHandler implements IService.Iface {
@@ -410,7 +410,7 @@ public class IServiceHandler implements IService.Iface {
     public ConnectResp connect(ConnectReq req) {
 
         // TODO
-        long sessionId=server.new_session();
+        long sessionId = server.new_session();
         System.out.println(req.username);
         System.out.println(req.password);
 
@@ -427,13 +427,12 @@ public class IServiceHandler implements IService.Iface {
         DisconnectResp resp = new DisconnectResp();
         server.remove_session(req.sessionId);
         resp.setStatus(new Status(Global.SUCCESS_CODE));
-        resp.status.msg="成功断开连接，欢迎再次使用";
+        resp.status.msg = "成功断开连接，欢迎再次使用";
         return resp;
     }
 
     @Override
     public ExecuteStatementResp executeStatement(ExecuteStatementReq req) {
-
 
         Table tempTable, table;
         boolean success;
@@ -675,11 +674,12 @@ public class IServiceHandler implements IService.Iface {
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         SQLParser parser = new SQLParser(tokens);
         ParseTree tree = parser.sql_stmt_list(); // parse
-        mySQLvisitor visitor =new mySQLvisitor();
+        mySQLvisitor visitor = new mySQLvisitor();
         statement_data t = visitor.visit(tree);
         if (t==null){
             //语法错误
             resp.status.msg =bos.toString();
+
             System.setErr(oldPrintStream);//恢复原来的System.out
             return resp;
         }
@@ -724,7 +724,8 @@ public class IServiceHandler implements IService.Iface {
                 if (success) {
                     resp.status.code = Global.SUCCESS_CODE;
                     resp.getStatus().msg = "创建数据库成功";
-                } else {
+                }
+                else {
                     resp.status.msg = "创建数据库失败:已存在同名数据库";
                 }
                 //异常状况:1.试图创建的数据库已存在
@@ -769,7 +770,8 @@ public class IServiceHandler implements IService.Iface {
                 if (success) {
                     resp.status.code = Global.SUCCESS_CODE;
                     resp.getStatus().msg = "删除表成功";
-                } else {
+                }
+                else {
                     resp.status.msg = "删除表失败:不存在这张表";
                 }
                 //异常状况:1.试图删除的表不存在
@@ -859,12 +861,65 @@ public class IServiceHandler implements IService.Iface {
             }
             case "select": {
                 //先测试前面的部分
+                QueryResult result = db.select(t.table_names, t.equalexpressions, t.conditions);
+                //输出列(暂时输出所有)
+                resp.columnsList = selectAttr(result.columnName,t.FullColumns);
+                List<List<String>> tempStrList = new ArrayList<>();
+                //输出行
+                for (int i = 0; i < result.entry.size(); i++) {
+                    List<String> tempStr = new ArrayList<>();
+                    List<Entry> tempEntry = result.entry.get(i);
+                    for (int j=0;j<tempEntry.size();j++){
+                        tempStr.add(tempEntry.get(j).toString());
+                    }
+                    tempStrList.add(tempStr);
+                }
+                resp.rowList = select(tempStrList,result.columnName,t.FullColumns);
+                resp.getStatus().msg = "select成功";
                 break;
+            }
+        }
+        return resp;
+    }
+
+    //拿到需要的select列
+    public static List<List<String>> select(List<List<String>> tempStrList,List<String>now,List<FullColumn>shouldSelect){
+        List<List<String>> ret = new ArrayList<>();
+        for (List<String> strings : tempStrList) {
+            List<String> tempStr = new ArrayList<>();
+            for (int j = 0; j < now.size(); j++) {
+                for (FullColumn str : shouldSelect) {
+                    String str_a = str.tableName + ".";
+                    if (str_a.equals("NULL.")) {
+                        str_a = "";
+                    }
+                    String tempstr2 = str_a + str.column_name;
+                    if (tempstr2.equals(now.get(j))) {
+                        tempStr.add(strings.get(j));
+                    }
+                }
+            }
+            ret.add(tempStr);
+        }
+        return ret;
+    }
+    public static List<String> selectAttr(List<String>now,List<FullColumn>shouldSelect){
+        List<String> ret = new ArrayList<>();
+        for (String str:now){
+            for (FullColumn fullColumn : shouldSelect) {
+                String str_a = fullColumn.tableName + ".";
+                if (str_a.equals("NULL.")) {
+                    str_a = "";
+                }
+                String tempstr2 = str_a + fullColumn.column_name;
+                if (tempstr2.equals(str)) {
+                    ret.add(str);
+                    break;
+                }
             }
 
         }
-//
-//         // TODO 根据数据库处理结果返回给客户端
-        return resp;
+        return ret;
     }
+
 }

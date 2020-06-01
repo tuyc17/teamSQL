@@ -3,9 +3,11 @@ package cn.edu.thssdb.query;
 import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.parser.EqualExpression;
 import cn.edu.thssdb.parser.FullColumn;
+import cn.edu.thssdb.schema.Column;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.schema.Table;
+import cn.edu.thssdb.type.ColumnType;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -13,7 +15,9 @@ import java.util.List;
 
 public class QueryTable implements Iterator<Row> {
   public ArrayList<Row> queryRows;
-  private Iterator<Row> it;
+  public ArrayList<String> attr = new ArrayList<>();
+  public ArrayList<ColumnType> attr_type = new ArrayList<>();
+  private Iterator<Row> it ;
 
   public QueryTable(Table t) {
     // TODO
@@ -26,6 +30,12 @@ public class QueryTable implements Iterator<Row> {
     }
     queryRows = rows;
     it = queryRows.iterator();
+
+    for (Column c: t.columns) {
+      attr.add(c.getName());
+      attr_type.add(c.getType());
+    }
+
   }
 
   public QueryTable(Table t1, Table t2, List<EqualExpression> equalExpressions) {
@@ -67,17 +77,56 @@ public class QueryTable implements Iterator<Row> {
         if(entries1.get(index1).compareTo(entries2.get(index2)) == 0)
         {
           table2_row.appendEntries(entries1);
+          rows.add(table2_row);
         }
-
-        rows.add(table2_row);
       }
       iterator2 = t2.iterator();
     }
 
     queryRows = rows;
     it = queryRows.iterator();
+
+    for(Column c2: t2.columns)
+    {
+      if(is_same(c2, t1.columns))
+      {
+        attr.add(t2.tableName+'.'+c2.getName());
+        attr_type.add(c2.getType());
+      }
+      else
+      {
+        attr.add(c2.getName());
+        attr_type.add(c2.getType());
+      }
+    }
+
+    for(Column c1: t1.columns)
+    {
+      if(is_same(c1, t2.columns))
+      {
+        attr.add(t1.tableName+'.'+c1.getName());
+        attr_type.add(c1.getType());
+      }
+      else
+      {
+        attr.add(c1.getName());
+        attr_type.add(c1.getType());
+      }
+    }
+
   }
 
+  private boolean is_same(Column c, ArrayList<Column> columns)
+  {
+    for(Column i : columns)
+    {
+      if(c.isSame(i.getName()))
+      {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @Override
   public boolean hasNext() {
