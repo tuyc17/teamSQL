@@ -71,7 +71,7 @@ public class Client {
             client = new IService.Client(protocol);
             boolean open = true;
             //不需要登录
-            sendconnect("123", "123123");
+            sendconnect("test_username", "test_password");
             while (true) {
                 print(Global.CLI_PREFIX);
                 String msg = SCANNER.nextLine();

@@ -279,14 +279,14 @@ public class Database {
         tables.remove(tableName);
         try {
           //删除数据库文件中对应表的名字
-          FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
+          FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt",true);
           BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
           bufferedWriter.write("");
           Set<String> keys = tables.keySet();
           for (String key : keys) {
             bufferedWriter.write(key + "\n");
           }
-          fileWriter.close();
+          bufferedWriter.flush();
           bufferedWriter.close();
           //删除表对应的文件
           File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");

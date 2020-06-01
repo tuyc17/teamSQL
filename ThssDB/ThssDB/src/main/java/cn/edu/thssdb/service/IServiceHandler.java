@@ -37,7 +37,6 @@ public class IServiceHandler implements IService.Iface {
 
         // TODO
         long sessionId=server.new_session();
-        System.out.println("Test:");
         System.out.println(req.username);
         System.out.println(req.password);
 
@@ -94,6 +93,16 @@ public class IServiceHandler implements IService.Iface {
 
         Database db = ThssDB.manager.getWorkingDb();
         switch (t.kind){
+            case "show_table":
+                //展示数据
+                //将表信息输出给client
+                tempTable= db.getTables().get(t.table.table_name);
+                //输出列
+                resp.columnsList = tempTable.GetColumnName();
+                //输出行
+                resp.rowList = Database.BTreeParseLLS(tempTable.index);
+                resp.getStatus().msg="展示表成功";
+                break;
             case "use_database":
                 //切换数据库
                 //已测试
@@ -157,9 +166,22 @@ public class IServiceHandler implements IService.Iface {
                 }
                 //异常状况:1.试图创建的表已存在
                 break;
+            case "drop_table":
+                success = db.drop(t.table.table_name);
+                if (success){
+                    resp.status.code=Global.SUCCESS_CODE;
+                    resp.getStatus().msg="删除表成功";
+                }
+                else{
+                    resp.status.code=Global.FAILURE_CODE;
+                    resp.status.msg="删除表失败:不存在这张表";
+                }
+                //异常状况:1.试图删除的表不存在
+                break;
             case "insert":
                 //已测试
                 //错误情况尚未处理(多主键相同)
+                //记得处理不存在这张表的情况
                 table = db.getTables().get(t.table_name);
                 Entry[] temp_list = new Entry[table.columns.size()];
                 //找每个名字对应的属性
@@ -209,6 +231,7 @@ public class IServiceHandler implements IService.Iface {
                 resp.getStatus().msg="插入数据成功";
                 break;
             case "delete":
+                //记得处理不存在这张表的情况
                 table = db.getTables().get(t.table_name);
                 table.delete(t.conditions);
                 //删除成功后，返回插入后的表情况
@@ -221,6 +244,7 @@ public class IServiceHandler implements IService.Iface {
                 resp.getStatus().msg="删除数据成功";
                 break;
             case "update":
+                //记得处理不存在这张表的情况
                 //TODO
                 //主键更改问题
                 table = db.getTables().get(t.table_name);

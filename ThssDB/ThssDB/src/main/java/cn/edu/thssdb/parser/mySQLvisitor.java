@@ -140,7 +140,12 @@ public class mySQLvisitor extends SQLBaseVisitor<statement_data> {
         visit(ctx.table_constraint());
         return result;
     }
-
+    // 解析showtable
+    @Override public statement_data visitShow_meta_stmt(SQLParser.Show_meta_stmtContext ctx) {
+        result.kind = "show_table";
+        result.table.table_name = ctx.table_name().getText();
+        return result;
+    }
     // 解析droptable
     @Override
     public statement_data visitDrop_table_stmt(SQLParser.Drop_table_stmtContext ctx) {
