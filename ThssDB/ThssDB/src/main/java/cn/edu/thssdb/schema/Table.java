@@ -123,10 +123,10 @@ public class Table implements Iterable<Row> {
     }
 
     public List<Pair<Entry, Row>>  iteratorModel(String left, String comparator, String right) {
+        //将表中符合条件的行都取出来
         List<Pair<Entry, Row>> ret = new ArrayList<>();
         for (int i = 0; i < columns.size(); i++) {
             if (columns.get(i).isSame(left)) {
-                // iterator()：匹配迭代器
                 ColumnType t = columns.get(i).getType();
                 Entry r = Database.GetEntry(t, right);
                 for (Pair<Entry, Row> pair : index) {
@@ -139,6 +139,7 @@ public class Table implements Iterable<Row> {
         }
         return ret;
     }
+
 
     public void delete_unit(Pair<Entry, Row> pair) {
         index.remove(pair.getKey());
@@ -160,7 +161,7 @@ public class Table implements Iterable<Row> {
         index.update(pair.getKey(), new_row);
     }
 
-    public boolean isSatisfied(String comparator, Entry temp, Entry r) {
+    public static boolean isSatisfied(String comparator, Entry temp, Entry r) {
         switch (comparator) {
             case ">":
                 return temp.compareTo(r) > 0;

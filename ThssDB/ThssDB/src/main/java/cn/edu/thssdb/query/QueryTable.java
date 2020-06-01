@@ -7,6 +7,7 @@ import cn.edu.thssdb.schema.Column;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.schema.Table;
+import cn.edu.thssdb.type.ColumnType;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -14,8 +15,9 @@ import java.util.List;
 
 public class QueryTable implements Iterator<Row> {
   public ArrayList<Row> queryRows;
-  public ArrayList<String> attr;
-  private Iterator<Row> it;
+  public ArrayList<String> attr = new ArrayList<>();
+  public ArrayList<ColumnType> attr_type = new ArrayList<>();
+  private Iterator<Row> it ;
 
   public QueryTable(Table t) {
     // TODO
@@ -31,6 +33,7 @@ public class QueryTable implements Iterator<Row> {
 
     for (Column c: t.columns) {
       attr.add(c.getName());
+      attr_type.add(c.getType());
     }
 
   }
@@ -89,10 +92,12 @@ public class QueryTable implements Iterator<Row> {
       if(is_same(c2, t1.columns))
       {
         attr.add(t2.tableName+'.'+c2.getName());
+        attr_type.add(c2.getType());
       }
       else
       {
         attr.add(c2.getName());
+        attr_type.add(c2.getType());
       }
     }
 
@@ -101,10 +106,12 @@ public class QueryTable implements Iterator<Row> {
       if(is_same(c1, t2.columns))
       {
         attr.add(t1.tableName+'.'+c1.getName());
+        attr_type.add(c1.getType());
       }
       else
       {
         attr.add(c1.getName());
+        attr_type.add(c1.getType());
       }
     }
 
