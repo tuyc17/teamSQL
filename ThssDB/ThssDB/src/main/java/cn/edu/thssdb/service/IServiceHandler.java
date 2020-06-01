@@ -67,8 +67,15 @@ public class IServiceHandler implements IService.Iface {
         boolean success;
         long session =req.sessionId;
         CharStream input = CharStreams.fromString(req.statement.toLowerCase());
+        // 特殊input的判断与分析
+        if(input.toString().equals("set auto commit true")) {
+            ExecuteStatementResp resp = new ExecuteStatementResp();
+            resp.status.code=Global.SUCCESS_CODE;
+            resp.status.msg ="设置为auto commit模式";
+            return resp;
+        }
         //转成小写以规避大小写问题
-        SQLLexer lexer = new SQLLexer(input);
+        SQLLexer lexer = new SQLLexer(input);   // input:client输入的内容
         //此处截取输出日志
         PrintStream oldPrintStream = System.err; //将原来的System.out交给printStream 对象保存
         ByteArrayOutputStream bos = new ByteArrayOutputStream();

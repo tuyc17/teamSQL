@@ -34,6 +34,7 @@ public class ThssDB {
     public static ThssDB getInstance() {
         return ThssDBHolder.INSTANCE;
     }
+
     public long new_session(){
         Random r = new Random();
         long temp;
@@ -49,6 +50,7 @@ public class ThssDB {
         sessions.add(temp);
         return temp;
     }
+
     public boolean remove_session(long session){
         for (int i = 0;i<sessions.size();i++){
             if (session==sessions.get(i)){
@@ -58,6 +60,7 @@ public class ThssDB {
         }
         return false;
     }
+
     public static void main(String[] args) {
         ThssDB server = ThssDB.getInstance();
         server.start();
@@ -76,6 +79,7 @@ public class ThssDB {
         };
         new Thread(setup).start();
     }
+
     // 实例化manager
     private static void setUp(IService.Processor processor) throws TException {
         try {
