@@ -58,7 +58,7 @@ public class Row implements Serializable {
           break;
       }
     }
-    Entry[] entryArray = (Entry[])entryList.toArray(new Entry[entryList.size()]);
+    Entry[] entryArray = entryList.toArray(new Entry[0]);
     return new Row(entryArray);
   }
 }

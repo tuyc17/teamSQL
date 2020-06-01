@@ -1,5 +1,8 @@
 package cn.edu.thssdb.client;
-
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JScrollPane;
+import javax.swing.table.DefaultTableModel;
 import cn.edu.thssdb.rpc.thrift.*;
 import cn.edu.thssdb.utils.Global;
 import org.apache.commons.cli.CommandLine;
@@ -18,7 +21,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.PrintStream;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+import javax.swing.JTable;
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.MessageFormat;
+import java.util.Random;
+
 
 public class Client {
 
@@ -58,7 +71,7 @@ public class Client {
             client = new IService.Client(protocol);
             boolean open = true;
             //不需要登录
-            sendconnect("123", "123123");
+            sendconnect("test_username", "test_password");
             while (true) {
                 print(Global.CLI_PREFIX);
                 String msg = SCANNER.nextLine();
@@ -142,8 +155,6 @@ public class Client {
         try {
             ExecuteStatementResp resp = client.executeStatement(req);
             Status temp = resp.getStatus();
-            //异常处理省略,理论上应该通过这个观察是否异常
-            System.out.println("已收到语句回复");
             if (temp.code == Global.SUCCESS_CODE) {
                 System.out.println("语句执行成功");
             } else if (temp.code == Global.FAILURE_CODE) {
@@ -151,12 +162,23 @@ public class Client {
             }
             System.out.print("服务端消息:");
             System.out.println(temp.msg);
-            if (resp.columnsList != null) {
-                System.out.println(resp.columnsList.toString());
+            if (resp.columnsList != null && resp.rowList != null) {
+                Object[][] templist =new Object[resp.rowList.size()][resp.columnsList.size()];
+                for (int i=0;i<resp.rowList.size();i++){
+                    templist[i] = resp.rowList.get(i).toArray();
+                }
+                JTable temptable = new JTable(templist,resp.columnsList.toArray());
+                JFrame tempFrame = new JFrame();
+
+                //tempFrame.add(addBtn, BorderLayout.NORTH);
+                tempFrame.add(new JScrollPane(temptable));
+                tempFrame.setSize(400, 300);
+                tempFrame.setLocationRelativeTo(null);
+                tempFrame.setVisible(true);
             }
-            if (resp.rowList != null) {
-                System.out.println(resp.rowList.toString());
-            }
+//            if (resp.rowList != null) {
+//                System.out.println(resp.rowList.toString());
+//            }
             System.out.println("");
         } catch (TException e) {
             logger.error(e.getMessage());

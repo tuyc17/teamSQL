@@ -16,4 +16,8 @@ public class Global {
   public static final String DISCONNECT= "disconnect";
   public static final String S_URL_INTERNAL = "jdbc:default:connection";
 
+//  public static boolean AUTO_COMMIT = false;  // 应该是true。测试用！！！
+//  public static boolean TRANSACTION = false;
+//  public static  int COMMIT_VERSION = 0;
+
 }

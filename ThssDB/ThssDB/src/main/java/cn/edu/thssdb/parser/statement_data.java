@@ -39,7 +39,7 @@ public class statement_data {
             String str = old_column.type_name;
 
             int maxLength = Global.MAX_LEN;
-            if (str.indexOf("(")!=-1 && str.indexOf(")")!=-1){
+            if (str.contains("(") && str.contains(")")){
                 maxLength = Integer.parseInt(str.substring(str.indexOf("(")+1,str.indexOf(")")));
                 str = str.substring(0,str.indexOf("("));
             }
@@ -49,4 +49,5 @@ public class statement_data {
         System.out.println(temp_list.length);
         return temp_list;
     }
+
 }

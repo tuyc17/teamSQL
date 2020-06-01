@@ -2,6 +2,7 @@ package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.index.BPlusTree;
 import cn.edu.thssdb.index.BPlusTreeIterator;
+import cn.edu.thssdb.parser.EqualExpression;
 import cn.edu.thssdb.query.QueryResult;
 import cn.edu.thssdb.query.QueryTable;
 import cn.edu.thssdb.type.ColumnType;
@@ -56,18 +57,15 @@ public class Database {
   //B+树转list<list<String>>
   public static List<List<String>> BTreeParseLLS(BPlusTree<Entry, Row> index){
     List<List<String>> ret= new ArrayList<>();
-    BPlusTreeIterator<Entry, Row> iterator=index.iterator();
-    while (iterator.hasNext())
-    {
-      Pair<Entry, Row> pair = iterator.next();
+    for (Pair<Entry, Row> pair : index) {
       ArrayList<Entry> entries = pair.getValue().getEntries();
       List<String> temp_list = new ArrayList<>();
-      for (int i=0;i<entries.size();i++){
-        String str = String.valueOf(entries.get(i));
-        if (str.equals("null")){
+      for (Entry entry : entries) {
+        String str = String.valueOf(entry);
+        if (str.equals("null")) {
           break;
         }
-        temp_list.add(String.valueOf(entries.get(i)));
+        temp_list.add(String.valueOf(entry));
       }
       ret.add(temp_list);
     }
@@ -226,13 +224,13 @@ public class Database {
     }
   }
 
-  public void create(String tableName, Column[] columns) {
+  public boolean create(String tableName, Column[] columns) {
     // TODO
     try {
       this.lock.writeLock().lock();
       if(tables.containsKey(tableName)) {
         //告知客户端表存在
-        return;
+        return false;
       }
       else {
         try {
@@ -246,7 +244,7 @@ public class Database {
 
           //创建表的元数据和实际数据
           File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
-          file.createNewFile();
+          boolean test = file.createNewFile();
           fileWriter = new FileWriter(Global.root+"/data/tables/columns/"+tableName+".txt");
           bufferedWriter = new BufferedWriter(fileWriter);
           for (Column c: columns) {
@@ -258,7 +256,7 @@ public class Database {
           bufferedWriter.close();
 
           file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-          file.createNewFile();
+          boolean test2 =file.createNewFile();
         }
         catch (IOException e) {
           e.printStackTrace();
@@ -271,9 +269,10 @@ public class Database {
     } finally {
       this.lock.writeLock().unlock();
     }
+    return true;
   }
 
-  public void drop(String tableName) {
+  public boolean drop(String tableName) {
     // TODO
     try {
       this.lock.writeLock().lock();
@@ -283,36 +282,54 @@ public class Database {
           //删除数据库文件中对应表的名字
           FileWriter fileWriter = new FileWriter(Global.root+"/data/databases/"+name+".txt");
           BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-          bufferedWriter.write("");
           Set<String> keys = tables.keySet();
-          Iterator<String> iterator = keys.iterator();
-          while (iterator.hasNext()) {
-            String key = iterator.next();
-            bufferedWriter.write(key+"\n");
+          for (String key : keys) {
+            bufferedWriter.write(key + "\n");
           }
-          fileWriter.close();
+          bufferedWriter.flush();
           bufferedWriter.close();
           //删除表对应的文件
           File file = new File(Global.root+"/data/tables/columns/"+tableName+".txt");
-          file.delete();
+          boolean test =file.delete();
           file = new File(Global.root+"/data/tables/rows/"+tableName+".txt");
-          file.delete();
+          boolean test2 =file.delete();
         }
         catch (IOException e) {
           e.printStackTrace();
         }
+        return true;
       }
       else {
         //告诉客户端表不存在
+        return false;
       }
     } finally {
       this.lock.writeLock().unlock();
     }
   }
 
-  public String select(QueryTable[] queryTables) {
+  public String select(List<String> table_names, List<EqualExpression> equalExpressions) {
     // TODO
-    QueryResult queryResult = new QueryResult(queryTables);
+    //QueryResult queryResult = new QueryResult(queryTables);
+    for (String s: table_names) {
+      if(!tables.containsKey(s))
+      {
+        //有未知表出现告诉客户端
+        //TODO
+        return null;
+      }
+    }
+
+    if (table_names.size() == 1)
+    {
+      QueryTable qt = new QueryTable(tables.get(table_names.get(0)));
+
+    }
+    else
+    {
+      QueryTable qt = new QueryTable(tables.get(table_names.get(0)), tables.get(table_names.get(1)), equalExpressions);
+
+    }
 
     return null;
   }
@@ -364,7 +381,7 @@ public class Database {
         }
         bufferedReader1.close();
         fileReader1.close();
-        Table table = new Table(name, line, (Column[])columnArrayList.toArray(new Column[0]));
+        Table table = new Table(name, line, columnArrayList.toArray(new Column[0]));
         tables.put(line, table);
       }
       fileReader.close();
