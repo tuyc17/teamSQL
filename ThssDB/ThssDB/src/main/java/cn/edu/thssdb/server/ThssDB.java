@@ -36,10 +36,10 @@ public class ThssDB {
         boolean temp_bool=true;
         while(temp_bool){
             temp = r.nextLong();
-            temp_bool=true;
+            temp_bool=false;
             for (Long session : sessions) {
                 if (temp == session) {
-                    temp_bool = false;
+                    temp_bool = true;
                     break;
                 }
             }
