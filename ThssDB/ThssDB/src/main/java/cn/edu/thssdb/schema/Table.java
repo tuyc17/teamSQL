@@ -122,9 +122,8 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    public void iteratorModel(String left, String comparator, String right, String model,
-                              cn.edu.thssdb.parser.Condition expression
-    ) {
+    public List<Pair<Entry, Row>>  iteratorModel(String left, String comparator, String right) {
+        List<Pair<Entry, Row>> ret = new ArrayList<>();
         for (int i = 0; i < columns.size(); i++) {
             if (columns.get(i).isSame(left)) {
                 // iterator()：匹配迭代器
@@ -133,21 +132,12 @@ public class Table implements Iterable<Row> {
                 for (Pair<Entry, Row> pair : index) {
                     ArrayList<Entry> entries = pair.getValue().getEntries();
                     if (isSatisfied(comparator, entries.get(i), r)) {
-                        switch (model) {
-                            case "delete":
-                                delete_unit(pair);
-                                break;
-                            case "update":
-                                update_unit(pair, expression.left, expression.right);
-                                break;
-                            default:
-                                System.out.println("错误:iteratorModel接受了不合法的model");
-                                break;
-                        }
+                        ret.add(pair);
                     }
                 }
             }
         }
+        return ret;
     }
 
     public void delete_unit(Pair<Entry, Row> pair) {
@@ -195,7 +185,10 @@ public class Table implements Iterable<Row> {
         String comparator = conditions.get(0).comparator;
         String left = conditions.get(0).left;
         String right = conditions.get(0).right;
-        iteratorModel(left, comparator, right, "delete",null);
+        List<Pair<Entry, Row>> templist = iteratorModel(left, comparator, right);
+        for (Pair<Entry, Row> pair :templist){
+            delete_unit(pair);
+        }
         serialize();
     }
 
@@ -219,7 +212,10 @@ public class Table implements Iterable<Row> {
         String comparator = conditions.get(0).comparator;
         String left = conditions.get(0).left;
         String right = conditions.get(0).right;
-        iteratorModel(left, comparator, right, "update",expression);
+        List<Pair<Entry, Row>> templist = iteratorModel(left, comparator, right);
+        for (Pair<Entry, Row> pair :templist){
+            update_unit(pair,expression.left,expression.right);
+        }
         serialize();
     }
 
