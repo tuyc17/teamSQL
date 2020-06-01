@@ -1,7 +1,6 @@
 package cn.edu.thssdb.service;
 
-import cn.edu.thssdb.parser.SQLParser;
-import cn.edu.thssdb.parser.statement_data;
+import cn.edu.thssdb.parser.*;
 import cn.edu.thssdb.query.QueryResult;
 import cn.edu.thssdb.rpc.thrift.*;
 import cn.edu.thssdb.schema.Database;
@@ -14,7 +13,6 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
-import cn.edu.thssdb.parser.SQLLexer;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -22,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.List;
 
-import cn.edu.thssdb.parser.mySQLvisitor;
 import cn.edu.thssdb.server.ThssDB;
 
 public class IServiceHandler implements IService.Iface {
@@ -261,7 +258,7 @@ public class IServiceHandler implements IService.Iface {
                 //先测试前面的部分
                 QueryResult result = db.select(t.table_names, t.equalexpressions, t.conditions);
                 //输出列(暂时输出所有)
-                resp.columnsList = result.columnName;
+                resp.columnsList = selectAttr(result.columnName,t.FullColumns);
                 List<List<String>> tempStrList = new ArrayList<>();
                 //输出行
                 for (int i = 0; i < result.entry.size(); i++) {
@@ -272,13 +269,52 @@ public class IServiceHandler implements IService.Iface {
                     }
                     tempStrList.add(tempStr);
                 }
-                resp.rowList = tempStrList;
+                resp.rowList = select(tempStrList,result.columnName,t.FullColumns);
                 resp.getStatus().msg = "select成功";
                 break;
         }
 
         // TODO 根据数据库处理结果返回给客户端
         return resp;
+    }
+    //拿到需要的select列
+    public static List<List<String>> select(List<List<String>> tempStrList,List<String>now,List<FullColumn>shouldSelect){
+        List<List<String>> ret = new ArrayList<>();
+        for (List<String> strings : tempStrList) {
+            List<String> tempStr = new ArrayList<>();
+            for (int j = 0; j < now.size(); j++) {
+                for (FullColumn str : shouldSelect) {
+                    String str_a = str.tableName + ".";
+                    if (str_a.equals("NULL.")) {
+                        str_a = "";
+                    }
+                    String tempstr2 = str_a + str.column_name;
+                    if (tempstr2.equals(now.get(j))) {
+                        tempStr.add(strings.get(j));
+                    }
+                }
+            }
+            ret.add(tempStr);
+        }
+        return ret;
+    }
+    public static List<String> selectAttr(List<String>now,List<FullColumn>shouldSelect){
+        List<String> ret = new ArrayList<>();
+        for (String str:now){
+            for (FullColumn fullColumn : shouldSelect) {
+                String str_a = fullColumn.tableName + ".";
+                if (str_a.equals("NULL.")) {
+                    str_a = "";
+                }
+                String tempstr2 = str_a + fullColumn.column_name;
+                if (tempstr2.equals(str)) {
+                    ret.add(str);
+                    break;
+                }
+            }
+
+        }
+        return ret;
     }
 
 }
