@@ -288,8 +288,9 @@ public class Database {
                     //删除表对应的文件
                     File file = new File(Global.root + "/data/tables/columns/" + tableName + ".txt");
                     boolean test = file.delete();
-                    file = new File(Global.root + "/data/tables/rows/" + tableName + ".txt");
-                    boolean test2 = file.delete();
+
+                    File file2 = new File(Global.root + "/data/tables/rows/" + tableName + ".txt");
+                    boolean test2 = file2.delete();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

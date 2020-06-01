@@ -307,21 +307,13 @@ public class Table implements Iterable<Row> {
                 Row row = new Row(entries.toArray(new Entry[0]));
                 rows.add(row);
             }
+            bufferedReader.close();
             return rows;
         } catch (IOException e) {
             e.printStackTrace();
         }
         return new ArrayList<>();
     }
-
-//  private ArrayList<Row> deserialize() throws IOException, ClassNotFoundException {
-//    // TODO
-//    return null;
-////    ObjectInputStream in = new ObjectInputStream(new FileInputStream(new File("test.txt")));
-////    Table table = (Table)in.readObject();
-////    in.close();
-////    return table.rows;
-//  }
 
     private class TableIterator implements Iterator<Row> {
         private Iterator<Pair<Entry, Row>> iterator;
