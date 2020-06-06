@@ -234,16 +234,16 @@ public class Database {
                 try {
                     // 向数据库的文件中增加表的名字
 
-                    FileWriter fileWriter = new FileWriter(Global.root + "/data/databases/" + name + ".txt");
+                    FileWriter fileWriter = new FileWriter(Global.root + "/data/databases/" + name + ".txt", true);
                     BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
                     bufferedWriter.write(tableName + "\n");
                     bufferedWriter.flush();
                     bufferedWriter.close();
 
                     //创建表的元数据和实际数据
-                    File file = new File(Global.root + "/data/tables/columns/" + tableName + ".txt");
+                    File file = new File(Global.root + "/data/tables/columns/" + name + "_" + tableName + ".txt");
                     boolean test = file.createNewFile();
-                    fileWriter = new FileWriter(Global.root + "/data/tables/columns/" + tableName + ".txt");
+                    fileWriter = new FileWriter(Global.root + "/data/tables/columns/"+ name + "_"  + tableName + ".txt");
                     bufferedWriter = new BufferedWriter(fileWriter);
                     for (Column c : columns) {
                         System.out.println(c.toString());
@@ -253,7 +253,7 @@ public class Database {
                     bufferedWriter.flush();
                     bufferedWriter.close();
 
-                    file = new File(Global.root + "/data/tables/rows/" + tableName + ".txt");
+                    file = new File(Global.root + "/data/tables/rows/" + name + "_" + tableName + ".txt");
                     boolean test2 = file.createNewFile();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -286,10 +286,10 @@ public class Database {
                     bufferedWriter.flush();
                     bufferedWriter.close();
                     //删除表对应的文件
-                    File file = new File(Global.root + "/data/tables/columns/" + tableName + ".txt");
+                    File file = new File(Global.root + "/data/tables/columns/" + name + "_" + tableName + ".txt");
                     boolean test = file.delete();
 
-                    File file2 = new File(Global.root + "/data/tables/rows/" + tableName + ".txt");
+                    File file2 = new File(Global.root + "/data/tables/rows/" + name + "_" + tableName + ".txt");
                     boolean test2 = file2.delete();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -337,7 +337,7 @@ public class Database {
             String line;
             while ((line = bufferedReader.readLine()) != null) {
                 //读每个表的元信息文件还原成columns
-                FileReader fileReader1 = new FileReader(Global.root + "/data/tables/columns/" + line + ".txt");
+                FileReader fileReader1 = new FileReader(Global.root + "/data/tables/columns/" + name + "_" + line + ".txt");
                 BufferedReader bufferedReader1 = new BufferedReader(fileReader1);
                 String line1;
                 ArrayList<Column> columnArrayList = new ArrayList<>();

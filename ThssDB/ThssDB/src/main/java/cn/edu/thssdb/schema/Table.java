@@ -6,6 +6,7 @@ import cn.edu.thssdb.index.BPlusTree;
 import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.type.ColumnType;
 import cn.edu.thssdb.schema.Column;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import javafx.scene.control.Tab;
 import javafx.util.Pair;
 import cn.edu.thssdb.utils.Global;
@@ -85,14 +86,18 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    //检查输入的变量类型是否和columns给出的信息一致
-    //这里看是直接传entry的数组好
-    //还是看发到这里再转化成entry的list
-    //entries 还需要变成对应的类型再保存
+    //当存在相同主键时无法插入
     public void insert(Entry[] entries) {
         // TODO
         Row row = new Row(entries);
-        index.put(entries[primaryIndex], row);
+        if(index.contains(entries[primaryIndex]))
+        {
+
+        }
+        else
+        {
+            index.put(entries[primaryIndex], row);
+        }
 
         serialize();
     }
@@ -234,82 +239,110 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    //根据网上的教程序列化和反序列化需要implement Serializable接口最后测试的时候可能table类要加上
-    //这里应该改成public，在Database类中去调用
-    //否则就是每执行一次上面的函数就要调用一次更新文件
     private void serialize() {
         // TODO
-        try {
-            FileWriter fileWriter = new FileWriter(Global.root + "/data/tables/rows/" + tableName + ".txt");
-            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+//        try {
+//            FileWriter fileWriter = new FileWriter(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");
+//            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+//
+//            BPlusTreeIterator<Entry, Row> iterator = index.iterator();
+//            while (iterator.hasNext()) {
+//                Pair<Entry, Row> pair = iterator.next();
+//                ArrayList<Entry> entries = pair.getValue().getEntries();
+//                for (int i = 0; i < entries.size(); i++) {
+//                    if (i == entries.size() - 1) {
+//                        bufferedWriter.write(entries.get(i).toString());
+//                    } else {
+//                        bufferedWriter.write(entries.get(i).toString() + ",");
+//                    }
+//                }
+//                bufferedWriter.write("\n");
+//            }
+//
+//            bufferedWriter.flush();
+//            bufferedWriter.close();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
-            BPlusTreeIterator<Entry, Row> iterator = index.iterator();
-            while (iterator.hasNext()) {
-                Pair<Entry, Row> pair = iterator.next();
-                ArrayList<Entry> entries = pair.getValue().getEntries();
-                for (int i = 0; i < entries.size(); i++) {
-                    if (i == entries.size() - 1) {
-                        bufferedWriter.write(entries.get(i).toString());
-                    } else {
-                        bufferedWriter.write(entries.get(i).toString() + ",");
-                    }
-                }
-                bufferedWriter.write("\n");
-            }
+        BPlusTreeIterator<Entry, Row> iterator = index.iterator();
+        ArrayList<Row> rows = new ArrayList<>();
+        while (iterator.hasNext())
+        {
+            Pair<Entry, Row> pair = iterator.next();
+            rows.add(pair.getValue());
+        }
 
-            bufferedWriter.flush();
-            bufferedWriter.close();
-
-        } catch (IOException e) {
+        try
+        {
+            FileOutputStream fo = new FileOutputStream(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");
+            ObjectOutputStream oo = new ObjectOutputStream(fo);
+            oo.writeObject(rows);
+            oo.close();
+        }
+        catch (IOException e)
+        {
             e.printStackTrace();
         }
 
     }
 
-    //假设能反序列化成B+树
-    //不行就还是返回row的list然后重建B+树
     private ArrayList<Row> deserialize() {
         // TODO
-        try {
-            FileReader fileReader = new FileReader(Global.root + "/data/tables/rows/" + tableName + ".txt");
-            BufferedReader bufferedReader = new BufferedReader(fileReader);
-            String line;
-            ArrayList<Row> rows = new ArrayList<>();
-            while ((line = bufferedReader.readLine()) != null) {
-                String[] values = line.split(",");
-                ArrayList<Entry> entries = new ArrayList<>();
-                for (int i = 0; i < values.length; i++) {
-                    ColumnType type = columns.get(i).getType();
-                    Entry entry;
-                    switch (type) {
-                        case INT:
-                            entry = new Entry(Integer.parseInt(values[i]));
-                            entries.add(entry);
-                            break;
-                        case LONG:
-                            entry = new Entry(Long.parseLong(values[i]));
-                            entries.add(entry);
-                            break;
-                        case FLOAT:
-                            entry = new Entry(Float.parseFloat(values[i]));
-                            entries.add(entry);
-                            break;
-                        case DOUBLE:
-                            entry = new Entry(Double.parseDouble(values[i]));
-                            entries.add(entry);
-                            break;
-                        case STRING:
-                            entry = new Entry(values[i]);
-                            entries.add(entry);
-                            break;
-                    }
-                }
-                Row row = new Row(entries.toArray(new Entry[0]));
-                rows.add(row);
-            }
-            bufferedReader.close();
+//        try {
+//            FileReader fileReader = new FileReader(Global.root + "/data/tables/rows/" + databaseName + "_" + tableName + ".txt");
+//            BufferedReader bufferedReader = new BufferedReader(fileReader);
+//            String line;
+//            ArrayList<Row> rows = new ArrayList<>();
+//            while ((line = bufferedReader.readLine()) != null) {
+//                String[] values = line.split(",");
+//                ArrayList<Entry> entries = new ArrayList<>();
+//                for (int i = 0; i < values.length; i++) {
+//                    ColumnType type = columns.get(i).getType();
+//                    Entry entry;
+//                    switch (type) {
+//                        case INT:
+//                            entry = new Entry(Integer.parseInt(values[i]));
+//                            entries.add(entry);
+//                            break;
+//                        case LONG:
+//                            entry = new Entry(Long.parseLong(values[i]));
+//                            entries.add(entry);
+//                            break;
+//                        case FLOAT:
+//                            entry = new Entry(Float.parseFloat(values[i]));
+//                            entries.add(entry);
+//                            break;
+//                        case DOUBLE:
+//                            entry = new Entry(Double.parseDouble(values[i]));
+//                            entries.add(entry);
+//                            break;
+//                        case STRING:
+//                            entry = new Entry(values[i]);
+//                            entries.add(entry);
+//                            break;
+//                    }
+//                }
+//                Row row = new Row(entries.toArray(new Entry[0]));
+//                rows.add(row);
+//            }
+//            bufferedReader.close();
+//            return rows;
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        return new ArrayList<>();
+        try
+        {
+            FileInputStream fi = new FileInputStream(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");
+            ObjectInputStream oi = new ObjectInputStream(fi);
+            ArrayList<Row> rows = (ArrayList<Row>) oi.readObject();
+            oi.close();
             return rows;
-        } catch (IOException e) {
+        }
+        catch (IOException | ClassNotFoundException e)
+        {
             e.printStackTrace();
         }
         return new ArrayList<>();

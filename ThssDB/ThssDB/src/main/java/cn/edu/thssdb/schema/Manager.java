@@ -90,9 +90,15 @@ public class Manager {
 
   public static int deleteDatabase(String name) {
     // TODO
-    // 返回0：成功 1:数据库不存在 2:数据库非空
+    // 返回0：成功 1:数据库不存在 2:数据库非空 3:无法删除default
     if(databases.containsKey(name))
     {
+      //
+      if(name.equals("default"))
+      {
+        return 3;
+      }
+
       databases.remove(name);
       try
       {
