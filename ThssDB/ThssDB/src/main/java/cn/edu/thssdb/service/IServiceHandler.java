@@ -417,6 +417,7 @@ public class IServiceHandler implements IService.Iface {
         resp.setStatus(new Status(Global.SUCCESS_CODE));
         resp.setSessionId(sessionId);
         System.out.println(resp.sessionId);
+
         return resp;
     }
 
