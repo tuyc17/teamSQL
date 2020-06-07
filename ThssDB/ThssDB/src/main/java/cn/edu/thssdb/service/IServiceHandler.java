@@ -413,7 +413,6 @@ public class IServiceHandler implements IService.Iface {
         long sessionId = server.new_session();
         System.out.println(req.username);
         System.out.println(req.password);
-
         ConnectResp resp = new ConnectResp();
         resp.setStatus(new Status(Global.SUCCESS_CODE));
         resp.setSessionId(sessionId);
@@ -453,9 +452,15 @@ public class IServiceHandler implements IService.Iface {
         try {
             if (!saveFolder.exists())
                 saveFolder.mkdirs();
-            if (!logFile.exists())
+            if (!logFile.exists()){
+                File logFolder = new File(Global.root + "/log");
+                logFolder.mkdirs();
                 logFile.createNewFile();
+            }
+
             if (!configFile.exists()) {
+                File configFolder = new File(Global.root + "/config");
+                configFolder.mkdirs();
                 configFile.createNewFile();
                 // 初始化session的config文件
                 FileWriter initfWriter = new FileWriter(Global.root + "/config/" + session + ".txt", false);
@@ -745,6 +750,9 @@ public class IServiceHandler implements IService.Iface {
                     case 2:
                         resp.getStatus().msg = "删除数据库失败:数据库非空";
                         break;
+                    case 3:
+                        resp.getStatus().msg = "删除数据库失败:请勿删除默认数据库";
+                        break;
                     default:
                         break;
                 }
@@ -797,6 +805,7 @@ public class IServiceHandler implements IService.Iface {
                         for (int j = 0; j < table.columns.size(); j++) {
                             if (t.column_names.get(i).equals(table.columns.get(j).getName())) {
                                 //第j个属性值应为第i个属性
+                                //TODO：增加前后数量不匹配的return
                                 temp_list[j] = Database.GetEntry(table.columns.get(j).getType(), t.value_entrys.get(i));
                             }
                         }

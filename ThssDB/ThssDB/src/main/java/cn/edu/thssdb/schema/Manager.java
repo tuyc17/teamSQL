@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import cn.edu.thssdb.utils.Global;
+import org.omg.PortableServer.THREAD_POLICY_ID;
 
 public class Manager {
   private static HashMap<String, Database> databases;
@@ -98,8 +99,6 @@ public class Manager {
       {
         return 3;
       }
-
-      databases.remove(name);
       try
       {
         //TODO
@@ -121,6 +120,11 @@ public class Manager {
         }
         bufferedWriter.flush();
         bufferedWriter.close();
+        if (ThssDB.manager.workingDb.name==name){
+          //删除的数据库是工作数据库，把工作数据库切换为default
+          ThssDB.manager.switchDatabase("default");
+        }
+        databases.remove(name);
         return 0;
 
       } catch (IOException e) {
@@ -132,7 +136,7 @@ public class Manager {
       //向客户端返回没有这个数据库
       return 1;
     }
-    return 3;
+    return 4;
   }
 
   public boolean switchDatabase(String name) {
