@@ -158,6 +158,7 @@ public class Table implements Iterable<Row> {
     }
 
     public static boolean isSatisfied(String comparator, Entry temp, Entry r) {
+
         switch (comparator) {
             case ">":
                 return temp.compareTo(r) > 0;

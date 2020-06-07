@@ -818,6 +818,9 @@ public class IServiceHandler implements IService.Iface {
                         resp.getStatus().msg = "插入数据失败,原因:不可空数据缺失";
                         break;
                     }
+                    if (!table.columns.get(i).isNotNull()&&temp_list[i] == null){
+                        temp_list[i] = new Entry("null");
+                    }
                 }
                 try {
                     table.insert(temp_list);

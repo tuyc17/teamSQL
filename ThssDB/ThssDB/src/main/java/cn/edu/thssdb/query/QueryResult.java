@@ -41,6 +41,9 @@ public class QueryResult {
                     ColumnType t = queryTables.attr_type.get(j);
                     Entry l = row.getEntries().get(j);
                     Entry r = Database.GetEntry(t, right);
+                    if (l.value.equals("null")||r.value.equals("null")){
+                        continue;
+                    }
                     if (Table.isSatisfied(comparator, l, r)) {
                         entry.add(preList.get(index));
                     }
