@@ -86,19 +86,10 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    //当存在相同主键时无法插入
     public void insert(Entry[] entries) {
         // TODO
         Row row = new Row(entries);
-        if(index.contains(entries[primaryIndex]))
-        {
-
-        }
-        else
-        {
-            index.put(entries[primaryIndex], row);
-        }
-
+        index.put(entries[primaryIndex], row);
         serialize();
     }
 
@@ -335,8 +326,15 @@ public class Table implements Iterable<Row> {
 //        return new ArrayList<>();
         try
         {
+            File file = new File(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");
+            if(file.length() == 0)
+            {
+                return new ArrayList<>();
+            }
+
             FileInputStream fi = new FileInputStream(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");
             ObjectInputStream oi = new ObjectInputStream(fi);
+
             ArrayList<Row> rows = (ArrayList<Row>) oi.readObject();
             oi.close();
             return rows;
