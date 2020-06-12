@@ -90,7 +90,7 @@ public class Table implements Iterable<Row> {
         // TODO
         Row row = new Row(entries);
         index.put(entries[primaryIndex], row);
-        serialize();
+        //serialize();
     }
 
     // tuyc's functional functions
@@ -187,7 +187,7 @@ public class Table implements Iterable<Row> {
         for (Pair<Entry, Row> pair :templist){
             delete_unit(pair);
         }
-        serialize();
+        //serialize();
     }
 
     // tuyc's override
@@ -214,7 +214,7 @@ public class Table implements Iterable<Row> {
         for (Pair<Entry, Row> pair :templist){
             update_unit(pair,expression.left,expression.right);
         }
-        serialize();
+        //serialize();
     }
 
     // tuyc's override
@@ -231,33 +231,8 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    private void serialize() {
+    public void serialize() {
         // TODO
-//        try {
-//            FileWriter fileWriter = new FileWriter(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");
-//            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-//
-//            BPlusTreeIterator<Entry, Row> iterator = index.iterator();
-//            while (iterator.hasNext()) {
-//                Pair<Entry, Row> pair = iterator.next();
-//                ArrayList<Entry> entries = pair.getValue().getEntries();
-//                for (int i = 0; i < entries.size(); i++) {
-//                    if (i == entries.size() - 1) {
-//                        bufferedWriter.write(entries.get(i).toString());
-//                    } else {
-//                        bufferedWriter.write(entries.get(i).toString() + ",");
-//                    }
-//                }
-//                bufferedWriter.write("\n");
-//            }
-//
-//            bufferedWriter.flush();
-//            bufferedWriter.close();
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
         BPlusTreeIterator<Entry, Row> iterator = index.iterator();
         ArrayList<Row> rows = new ArrayList<>();
         while (iterator.hasNext())
@@ -282,49 +257,6 @@ public class Table implements Iterable<Row> {
 
     private ArrayList<Row> deserialize() {
         // TODO
-//        try {
-//            FileReader fileReader = new FileReader(Global.root + "/data/tables/rows/" + databaseName + "_" + tableName + ".txt");
-//            BufferedReader bufferedReader = new BufferedReader(fileReader);
-//            String line;
-//            ArrayList<Row> rows = new ArrayList<>();
-//            while ((line = bufferedReader.readLine()) != null) {
-//                String[] values = line.split(",");
-//                ArrayList<Entry> entries = new ArrayList<>();
-//                for (int i = 0; i < values.length; i++) {
-//                    ColumnType type = columns.get(i).getType();
-//                    Entry entry;
-//                    switch (type) {
-//                        case INT:
-//                            entry = new Entry(Integer.parseInt(values[i]));
-//                            entries.add(entry);
-//                            break;
-//                        case LONG:
-//                            entry = new Entry(Long.parseLong(values[i]));
-//                            entries.add(entry);
-//                            break;
-//                        case FLOAT:
-//                            entry = new Entry(Float.parseFloat(values[i]));
-//                            entries.add(entry);
-//                            break;
-//                        case DOUBLE:
-//                            entry = new Entry(Double.parseDouble(values[i]));
-//                            entries.add(entry);
-//                            break;
-//                        case STRING:
-//                            entry = new Entry(values[i]);
-//                            entries.add(entry);
-//                            break;
-//                    }
-//                }
-//                Row row = new Row(entries.toArray(new Entry[0]));
-//                rows.add(row);
-//            }
-//            bufferedReader.close();
-//            return rows;
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        return new ArrayList<>();
         try
         {
             File file = new File(Global.root + "/data/tables/rows/"+ databaseName + "_"  + tableName + ".txt");

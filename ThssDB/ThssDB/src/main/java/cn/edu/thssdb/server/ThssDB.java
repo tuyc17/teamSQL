@@ -84,34 +84,7 @@ public class ThssDB {
             TServerSocket transport = new TServerSocket(Global.DEFAULT_SERVER_PORT);
             TServer server = new TThreadPoolServer(new TThreadPoolServer.Args(transport).processor(processor));
             logger.info("Starting ThssDB ...");
-            //新建manager
             manager = Manager.getInstance();
-
-            // TODO:遍历所有log并对commit进行对应操作
-
-
-//            Column a = new Column("test", ColumnType.INT, 1, true, 10);
-//            ArrayList<Column> t = new ArrayList<>();
-//            t.add(a);
-//            Column[] columns = (Column[]) t.toArray(new Column[0]);
-
-            //此处用于测试
-//            IServiceHandler t = new IServiceHandler();
-//            ExecuteStatementReq test = new ExecuteStatementReq();
-//          test.statement = "CREATE TABLE person (name String(256), ID Int not null, PRIMARY KEY(ID))";
-//          //CREATE测试完成
-//          test.statement ="INSERT INTO person VALUES ('Bob', 15)";
-//          //insert测试完成
-//          test.statement ="DELETE FROM tableName WHERE attrName = attValue";
-//          delete测试完成
-//          test.statement ="UPDATE  tableName  SET  attrName = attrValue  WHERE  attrName = attrValue";
-//          test.statement ="UPDATE  tableName  SET  attrName = attrValue  ";
-//          //update测试完成
-//          test.statement ="SELECT tableName1.AttrName1, tableName1.AttrName2, tableName2.AttrName1, tableName2.AttrName2  " +
-//                    "FROM  tableName1 JOIN tableName2  ON  tableName1.attrName1 = tableName2.attrName2  " +
-//                    "WHERE  attrName1 = attrValue ";
-//            t.executeStatement(test);
-            //测试结束
             server.serve();
         } catch (TTransportException e) {
             logger.error(e.getMessage());

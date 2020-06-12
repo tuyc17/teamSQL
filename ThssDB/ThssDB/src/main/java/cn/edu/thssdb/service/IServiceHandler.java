@@ -137,6 +137,10 @@ public class IServiceHandler implements IService.Iface {
         server.remove_session(req.sessionId);
         resp.setStatus(new Status(Global.SUCCESS_CODE));
         resp.status.msg = "成功断开连接，欢迎再次使用";
+
+        //写文件
+        ThssDB.manager.quit();
+
         return resp;
     }
 

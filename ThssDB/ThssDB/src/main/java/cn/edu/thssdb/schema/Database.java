@@ -385,6 +385,10 @@ public class Database {
     public void quit() {
         // TODO
         //数据持久化
-        //persist();
+        Collection<Table> tableCollection = tables.values();
+        for (Table t: tableCollection) {
+            t.serialize();
+        }
+
     }
 }

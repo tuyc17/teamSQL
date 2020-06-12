@@ -6,10 +6,7 @@ import cn.edu.thssdb.parser.Statement.*;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import cn.edu.thssdb.utils.Global;
@@ -52,6 +49,17 @@ public class Manager {
 
     logger.redoLog();
   }
+
+  public void quit()
+  {
+    Collection<Database> dbs = databases.values();
+
+    for (Database db: dbs) {
+      db.quit();
+    }
+
+  }
+
 
   public Database getWorkingDb() {
     try {
@@ -102,12 +110,15 @@ public class Manager {
       try
       {
         //TODO
+
         //应该要保证数据库中没有表了才能删除
         File file = new File(Global.root+"/data/databases/"+name+".txt");
         if (file.length()!=0){
           return 2;
         }
         file.delete();
+
+        databases.remove(name);
 
         FileWriter fileWriter = new FileWriter(Global.root+"/data/manager.txt");
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
@@ -124,7 +135,7 @@ public class Manager {
           //删除的数据库是工作数据库，把工作数据库切换为default
           ThssDB.manager.switchDatabase("default");
         }
-        databases.remove(name);
+
         return 0;
 
       } catch (IOException e) {
