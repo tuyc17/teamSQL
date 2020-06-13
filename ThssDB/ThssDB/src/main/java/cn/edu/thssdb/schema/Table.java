@@ -170,6 +170,8 @@ public class Table implements Iterable<Row> {
                 return temp.compareTo(r) <= 0;
             case "=":
                 return temp.compareTo(r) == 0;
+            case "<>":
+                return temp.compareTo(r) != 0;
             default:
                 System.out.println("解析错误！");
                 return false;

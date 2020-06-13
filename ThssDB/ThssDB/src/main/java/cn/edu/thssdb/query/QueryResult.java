@@ -26,6 +26,12 @@ public class QueryResult {
         for (int i = 0; i < queryTables.queryRows.size(); i++) {
             preList.add(queryTables.queryRows.get(i).getEntries());
         }
+        // 处理特殊的没有where的情况
+        if (conditionList.size()==0){
+            for (Row row : queryTables.queryRows) {
+                entry.add(row.getEntries());
+            }
+        }
         // 只处理and操作符(应付展示)\笑脸
         for (int i = 0; i < conditionList.size(); i++) {
             String comparator = conditionList.get(i).comparator;

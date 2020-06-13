@@ -407,8 +407,6 @@ public class IServiceHandler implements IService.Iface {
             return resp;
         }
         System.setErr(oldPrintStream);//恢复原来的System.out
-        System.out.print("收到信息，类型为:");
-        System.out.print(t.kind);
         //在此处语法解析完成，并生成 statement_data t，请对t进行访问，以修改数据库
         // TODO 处理数据库
         // 忽略异常处理
@@ -419,6 +417,11 @@ public class IServiceHandler implements IService.Iface {
                 //展示数据
                 //将表信息输出给client
                 tempTable = db.getTables().get(t.table.table_name);
+                if (tempTable==null){
+                    resp.status.code = Global.FAILURE_CODE;
+                    resp.getStatus().msg = "此表不存在";
+                    return resp;
+                }
                 //输出列
                 resp.columnsList = tempTable.GetColumnName();
                 //输出行
@@ -508,6 +511,11 @@ public class IServiceHandler implements IService.Iface {
                 //错误情况尚未处理(多主键相同)
                 //记得处理不存在这张表的情况
                 table = db.getTables().get(t.table_name);
+                if (table==null){
+                    resp.status.code = Global.FAILURE_CODE;
+                    resp.getStatus().msg = "此表不存在";
+                    return resp;
+                }
                 Entry[] temp_list = new Entry[table.columns.size()];
                 //找每个名字对应的属性
                 if (t.column_names.size() == 0) {
@@ -525,20 +533,26 @@ public class IServiceHandler implements IService.Iface {
                                 //第j个属性值应为第i个属性
                                 //TODO：增加前后数量不匹配的return
                                 temp_list[j] = Database.GetEntry(table.columns.get(j).getType(), t.value_entrys.get(i));
+
                             }
                         }
                     }
                 }
                 //然后看看有没有可空属性空
+                boolean bigbreak = false;
                 for (int i = 0; i < table.columns.size(); i++) {
                     if (temp_list[i] == null && table.columns.get(i).isNotNull()) {
                         //不可空可空，报错
                         resp.getStatus().msg = "插入数据失败,原因:不可空数据缺失";
+                        bigbreak = true;
                         break;
                     }
                     if (!table.columns.get(i).isNotNull()&&temp_list[i] == null){
                         temp_list[i] = new Entry("null");
                     }
+                }
+                if (bigbreak){
+                    break;
                 }
                 try {
                     table.insert(temp_list);
@@ -548,11 +562,11 @@ public class IServiceHandler implements IService.Iface {
                 }
                 //插入成功后，返回插入后的表情况
                 //将表信息输出给client
-                tempTable = db.getTables().get(t.table_name);
-                //输出列
-                resp.columnsList = tempTable.GetColumnName();
-                //输出行
-                resp.rowList = Database.BTreeParseLLS(tempTable.index);
+//                tempTable = db.getTables().get(t.table_name);
+//                //输出列
+//                resp.columnsList = tempTable.GetColumnName();
+//                //输出行
+//                resp.rowList = Database.BTreeParseLLS(tempTable.index);
                 resp.status.code=Global.SUCCESS_CODE;
                 resp.getStatus().msg = "插入数据成功";
                 break;
@@ -560,6 +574,11 @@ public class IServiceHandler implements IService.Iface {
             case "delete": {
                 //记得处理不存在这张表的情况
                 table = db.getTables().get(t.table_name);
+                if (table==null){
+                    resp.status.code = Global.FAILURE_CODE;
+                    resp.getStatus().msg = "此表不存在";
+                    return resp;
+                }
                 table.delete(t.conditions);
                 //删除成功后，返回插入后的表情况
                 //将表信息输出给client
@@ -577,6 +596,11 @@ public class IServiceHandler implements IService.Iface {
                 //TODO
                 //主键更改问题
                 table = db.getTables().get(t.table_name);
+                if (table==null){
+                    resp.status.code = Global.FAILURE_CODE;
+                    resp.getStatus().msg = "此表不存在";
+                    return resp;
+                }
                 table.update(t.expression, t.conditions);
                 //更新成功后，返回插入后的表情况
                 //将表信息输出给client
@@ -592,6 +616,11 @@ public class IServiceHandler implements IService.Iface {
             case "select": {
                 //先测试前面的部分
                 QueryResult result = db.select(t.table_names, t.equalexpressions, t.conditions);
+                if (result==null){
+                    resp.status.code = Global.FAILURE_CODE;
+                    resp.getStatus().msg = "此表不存在";
+                    return resp;
+                }
                 //输出列(暂时输出所有)
                 resp.columnsList = selectAttr(result.columnName,t.FullColumns);
                 List<List<String>> tempStrList = new ArrayList<>();
@@ -605,6 +634,7 @@ public class IServiceHandler implements IService.Iface {
                     tempStrList.add(tempStr);
                 }
                 resp.rowList = select(tempStrList,result.columnName,t.FullColumns);
+                resp.getStatus().code = Global.SUCCESS_CODE;
                 resp.getStatus().msg = "select成功";
                 break;
             }
