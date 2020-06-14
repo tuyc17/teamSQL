@@ -422,12 +422,18 @@ public class IServiceHandler implements IService.Iface {
                     resp.getStatus().msg = "此表不存在";
                     return resp;
                 }
-                //输出列
-                resp.columnsList = tempTable.GetColumnName();
-                //输出行
-                resp.rowList = Database.BTreeParseLLS(tempTable.index);
+//                //输出列
+//                resp.columnsList = tempTable.GetColumnName();
+//                //输出行
+//                resp.rowList = Database.BTreeParseLLS(tempTable.index);
                 resp.status.code=Global.SUCCESS_CODE;
-                resp.getStatus().msg = "展示表成功";
+                StringBuilder msg = new StringBuilder();
+                for(int i=0; i<tempTable.columns.size();i++){
+                    String tempmsg = tempTable.columns.get(i).toString();
+                    msg.append(tempmsg);
+                    msg.append('\n');
+                }
+                resp.getStatus().msg =msg.toString();
                 break;
             }
             case "use_database": {
